@@ -1,0 +1,131 @@
+_____________________________________________________________________
+These instructions will configure an Apache web server and GIT server.
+The servers will maintain and publish Linux documents and other repos.
+
+ - install GIT, OpenSSH, and Apache servers
+    # ... TBD ....
+    # Install servers onto hostname giterdone @ 192.168.0.254
+    # add first user "giterdone" as the repo administrator
+
+    - login giterdone and share it's home with everone in it's group
+    $ chmod 770 /home/giterdone
+
+    ? IF you are initializing an empty repo for developers
+       $ mkdir GLSLinuxDocs.git
+       $ cd GLSLinuxDocs.git
+       $ git init --bare --shared=group
+      ###chown -R giterdone:giterdone ./
+
+    ? ELSE you can recreate another repo as this server repo
+       $ cd /home/giterdone
+       $ git clone --bare https://github.com/hardkernel/<repository.git> -b <branch>
+       $ cd <repository.git>
+       $ git config core.sharedRepository group
+      ###chown -R giterdone:giterdone ./
+
+    ? IF you want the repo available to web users
+       $ su -
+       $ cd /var/www/html
+       $ git clone /home/giterdone/GLSLinuxDocs.git LinuxDocs
+       $ chown -R giterdone:giterdone LinuxDocs
+       $ chmod 775 LinuxDocs
+       $ nano -w /etc/httpd/conf/httpd.conf
+         <Directory /var/www/html/LinuxDocs>
+             AllowOverride AuthConfig
+         </Directory>
+       $ /etc/init.d/httpd reload
+       $ exit # from root user
+
+       $ nano -w /home/giterdone/GLSLinuxDocs.git/hooks/post-receive
+         #!/bin/sh
+         GIT_WORK_TREE=/var/www/html/LinuxDocs git checkout -f
+         #chgrp -R giterdone /var/www/html/LinuxDocs
+
+       $ chmod +x /home/giterdone/GLSLinuxDocs.git/hooks/post-receive
+
+       $ nano -w /var/www/html/LinuxDocs/.htaccess
+         AuthUserFile /etc/httpd/conf/.htpasswd
+         AuthGroupFile /dev/null
+         AuthName EnterPassword
+         AuthType Basic
+         require user glscantlen mpayne frankk dbaird
+
+
+ - Continuing from a development system, NOT the server
+    - add the server name to all development systems' /etc/hosts
+       $ sudo nano -w /etc/hosts # add/edit entry for giterdone
+         192.168.0.254   giterdone
+    $ ssh giterdone@giterdone
+
+    - Add this user to the shared development repo
+       $ su -c 'useradd glscantlen'
+         password _________
+       $ usermod -a -G giterdone glscantlen
+    - Add this user to the secure web pages
+       $ htpasswd -c /etc/httpd/conf/.htpasswd glscantlen
+         New password: _________
+
+      ###/etc/init.d/httpd reload
+       - Check who's loging in
+         ###less /var/log/httpd/access_log
+         ###less /var/log/httpd/error_log
+         ###less /var/log/httpd/ssl_access_log 
+         ###less /var/log/httpd/ssl_error_log
+         ###less /var/log/httpd/ssl_request_log 
+         ###less /var/log/audit/audit.log 
+         ###less /var/log/secure
+
+    $ exit # from ssh giterdone
+
+
+    - GIT the repo for GLSLinuxDocs from giterdone.
+      Make the initial commit to your GLSLinuxDocs then push it to the server
+      See man git-clone, git-add, git-commit, git-push
+      ###... TBD ... Install GIT and config global name-email
+       $ git clone ssh://glscantlen@giterdone/home/giterdone/GLSLinuxDocs.git
+         warning: You appear to have cloned an empty repository.
+       $ cd GLSLinuxDocs
+       - populate the directory tree with new files  $ cp <MyStuff> ./
+       $ git ls-files
+       $ git add <MyStuff>
+       $ git status
+       $ git commit -a -m "initial commit"
+       $ git push -u origin master
+       $ git branch -a
+       $ git remote show origin
+       - Browser @ http://giterdone/LinuxDocs
+
+
+
+____________________________
+Simplified work-flow for GIT
+
+ - Make changes to local files and commit them
+    $ git ls-files
+    $ git add <new files>
+    $ git rm <deleated files>
+    $ git commit -a -m "message describes your changes"
+
+ ! many commits can be made before you push
+
+ - look for others' changes on the server
+    $ git fetch origin master
+      others' changes = 22b9cb7..747055d  master     -> origin/master
+    $ git log master..origin/master
+
+ ? IF you are behind then merge changes and fix any conflicts
+    $ git merge origin/master
+
+    ? IF merge failed; fix conflicts and commit the fixes
+       - Edit the files that conflict
+         <<<<<<< HEAD  # shows your previous commits that conflict
+         >>>>>>> origin/master # shows changes on the server
+       $ git commit -a 
+
+ $ git push -u origin master
+    ? IF push still fails then changes were probably made while
+      you were fixing your conficts. Go back to "git fetch origin"
+
+
+
+
