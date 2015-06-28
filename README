@@ -1,4 +1,5 @@
 This repository contains instructions for building a variaty of Linux based systems.
+The instructions are documented in simple readable text files.
 A specific format is used to identify differnt types of proceses such as:
  $ Execute this line on the console/terminal
  ! Important notice
