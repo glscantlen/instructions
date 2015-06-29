@@ -23,7 +23,7 @@ The servers will maintain and publish Linux documents and other repos.
        $ git config core.sharedRepository group
       ###chown -R giterdone:giterdone ./
 
-    ? IF you want the repo available to web users
+    ? IF you want the repo viewable to web users
        $ su -
        $ cd /var/www/html
        $ git clone /home/giterdone/GLSLinuxDocs.git LinuxDocs
@@ -55,9 +55,9 @@ The servers will maintain and publish Linux documents and other repos.
     - add the server name to all development systems' /etc/hosts
        $ sudo nano -w /etc/hosts # add/edit entry for giterdone
          192.168.0.254   giterdone
-    $ ssh giterdone@giterdone
 
-    - Add this user to the shared development repo
+    - Add a development system's user to the server and repo group
+       $ ssh giterdone@giterdone
        $ su -c 'useradd glscantlen'
          password _________
        $ usermod -a -G giterdone glscantlen
@@ -77,8 +77,7 @@ The servers will maintain and publish Linux documents and other repos.
 
     $ exit # from ssh giterdone
 
-
-    - GIT the repo for GLSLinuxDocs from giterdone.
+    - GIT the repo, GLSLinuxDocs, for glscantlen from giterdone.
       Make the initial commit to your GLSLinuxDocs then push it to the server
       See man git-clone, git-add, git-commit, git-push
       ###... TBD ... Install GIT and config global name-email
@@ -100,13 +99,13 @@ The servers will maintain and publish Linux documents and other repos.
 ____________________________
 Simplified work-flow for GIT
 
- - Make changes to local files and commit them
+ - Make changes to local files and commit them locally
     $ git ls-files
     $ git add <new files>
     $ git rm <deleated files>
     $ git commit -a -m "message describes your changes"
 
- ! many commits can be made before you push
+ ! many local commits can be made before you push to server
 
  - look for others' changes on the server
     $ git fetch origin master
