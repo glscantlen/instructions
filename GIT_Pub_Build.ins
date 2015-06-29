@@ -102,8 +102,12 @@ Simplified work-flow for GIT
 
  - Make changes to local files and commit them
     $ git ls-files
-    $ git add <new files>
-    $ git rm <deleated files>
+    ? IF you added new files to the repo
+       $ git add <new files>
+    ? IF you delated files from the repo
+       $ git rm <deleated files>
+    - Show which repo files were changed
+       $ git status
     $ git commit -a -m "message describes your changes"
 
  ! many commits can be made before you push
