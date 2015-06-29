@@ -2,8 +2,8 @@ This folder contains instructions and associated files for building
 a very simple media player on an Odroid-XU3. The media player is
 built from mplayer/ffmpeg and youtube-dl. This system uses u-boot
 for the bootloader and BuildRoot for building the root filesystem.
-The instructions will build a kernal external to BuildRoot from the
-Hardkernel linux repository. 
+The instructions will build u-boot and kernal from the Hardkernel
+repositories, external to BuildRoot.
 
 These procedures were written to be executed on an Ubuntu 14.04 x86 desktop.
 The target system will be placed onto a microSD that will boot the Odroid-XU3
