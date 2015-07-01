@@ -9,6 +9,6 @@ These procedures were written to be executed on an Ubuntu 14.04 x86 desktop.
 The target system will be placed onto a microSD that will boot the Odroid-XU3
 and the system can be transfered to the Odroid-XU3 remotely. There is no
 requirement to preform S/W development on the Odroid-XU3 itself. The
-Odroid-XU3 will not require a previosly installed system.
+Odroid-XU3 will not require a previously installed system.
 
 
