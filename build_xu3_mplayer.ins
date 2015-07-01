@@ -112,7 +112,6 @@ See instructions below: "Debug/Monitor/Serial console installation".
        $ sudo sync
        $ sudo partprobe
        $ cat /proc/partitions
-      ###tune2fs -O ^has_journal $DEV_SD'2' -U e139ce78-9841-40fe-8823-96a304a09859
        $ sudo fsck.vfat -fv $DEV_SD'1' # verify fat
        $ sudo fsck.ext4 -fv $DEV_SD'2' # verify ext4 no journal
        $ sudo tune2fs -l $DEV_SD'2' | grep -E 'features|UUID'
@@ -146,13 +145,17 @@ See instructions below: "Debug/Monitor/Serial console installation".
     $ tar -xvjf buildroot-2015.05.tar.bz2
     $ cd buildroot-2015.05
 
-    - Add the armsoc video driver config/build for Buildroot's X11
-       $ mkdir package/x11r7/xdriver_xf86-video-armsoc
-       $ nano -w package/x11r7/Config.in # insert a line for armsoc package as shown:
+    - Add "armsoc" video driver config/build to Buildroot's X11
+       # insert a line for the armsoc package into the x11r7/Config.in
+         armsoc is added to the drivers menu in alphabetic order.
+       $ nano -w package/x11r7/Config.in
+         ...
          <TAB><TAB>source package/x11r7/xdriver_xf86-video-ark/Config.in
          <TAB><TAB>source package/x11r7/xdriver_xf86-video-armsoc/Config.in
          <TAB><TAB>source package/x11r7/xdriver_xf86-video-ast/Config.in
+         ...
 
+       $ mkdir package/x11r7/xdriver_xf86-video-armsoc
        $ nano -w package/x11r7/xdriver_xf86-video-armsoc/Config.in
          config BR2_PACKAGE_XDRIVER_XF86_VIDEO_ARMSOC
          <TAB>bool "xf86-video-armsoc"
@@ -164,128 +167,41 @@ See instructions below: "Debug/Monitor/Serial console installation".
          <TAB>help
          <TAB>  Odroid XU3 video driver
 
-       $ nano -w package/x11r7/xdriver_xf86-video-armsoc/xdriver_xf86-video-armsoc.mk
-         ################################################################################
-         #
-         # xdriver_xf86-video-armsoc
-         #
-         ################################################################################
+       - Create a '.mk' file for download and build of the armsoc driver code
+       ? Use the appended instructions below "Create ARMSOC xdriver_xf86-video-armsoc.mk"
+         or copy the pre-written file from "instructions/Buildroot_XU3_MPlayer"
+          $ cp ~/instructions/Buildroot_XU3_MPlayer/xdriver_xf86-video-armsoc.mk package/x11r7/xdriver_xf86-video-armsoc/
 
-         XDRIVER_XF86_VIDEO_ARMSOC_VERSION = 13a46a857369cf3627cf6d4d6f04e5420341cde3
-         XDRIVER_XF86_VIDEO_ARMSOC_SITE = $(call github,mihailescu2m,xf86-video-armsoc,$(XDRIVER_XF86_VIDEO_ARMSOC_VERSION))
-         #XDRIVER_XF86_VIDEO_ARMSOC_VERSION = master
-         #XDRIVER_XF86_VIDEO_ARMSOC_SITE = $(call github,endlessm,xf86-video-armsoc,$(XDRIVER_XF86_VIDEO_ARMSOC_VERSION))
-         XDRIVER_XF86_VIDEO_ARMSOC_AUTORECONF = YES
-         XDRIVER_XF86_VIDEO_ARMSOC_DEPENDENCIES = xserver_xorg-server xproto_fontsproto xproto_randrproto xproto_renderproto xproto_xextproto xproto_xproto
-         XDRIVER_XF86_VIDEO_ARMSOC_CONF_OPTS = --with-drmmode=exynos --enable-maintainer-mode
-         XDRIVER_XF86_VIDEO_ARMSOC_PRE_CONFIGURE_HOOKS += M4MKDIR_HOOK
-
-         define M4MKDIR_HOOK
-         -mkdir $(@D)/m4;
-         endef
-
-         define XDRIVER_XF86_VIDEO_ARMSOC_AUTOGEN_HOOK
-         ( \
-         cd $(@D); \
-         mkdir -p config; \
-         touch AUTHORS; \
-         $(HOST_DIR)/usr/bin/aclocal; \
-         $(HOST_DIR)/usr/bin/autoheader; \
-         $(HOST_DIR)/usr/bin/libtoolize --copy --force; \
-         $(HOST_DIR)/usr/bin/automake --copy --add-missing --foreign; \
-         $(HOST_DIR)/usr/bin/autoconf; \
-         );
-         endef
-
-         XDRIVER_XF86_VIDEO_ARMSOC_PRE_CONFIGURE_HOOKS += XDRIVER_XF86_VIDEO_ARMSOC_AUTOGEN_HOOK
-
-         $(eval $(autotools-package))
-
-
-    $ sudo apt-get install ncurses-dev
-    $ make menuconfig # enable buildroot configurations as shown:
-
-      Target-options -> (ARM (little endian))
-                        Target Architecture Variant (cortex-A7)
-                        Target ABI (EABIhf)
-
-      Build options  -> [*] Enable compiler cache
-
-      tool-chain     -> Toolchain type (External toolchain)
-                        Toolchain (Custom toolchain)
-                        Toolchain origin (Pre-installed toolchain)
-                        ($HOME/xu3_mplayer/gcc-linaro-4.9-2015.02-3-x86_64_arm-linux-gnueabihf) Toolchain path
-                        (arm-linux-gnueabihf) Toolchain prefix
-                        External toolchain kernel headers series (3.17.x)
-                        External toolchain C library (glibc/eglibc)
-                        [*] Toolchain has RPC support? (NEW)
-                        [*] Toolchain has C++ support?
-
-      system-config  -> /dev management (Dynamic using eudev)
-
-      Target packages-> Graphic libs & apps -> [*] X.org -> Servers -> xorg-server
-                                                                       X Window System server type (Modular X.org)
-                                                                       [*] Enable AIGLX Extension 
-                                                            Apps    -> [*] twm
-                                                                       [*] xclock
-                                                            Drivers -> [*] xf86-input-evdev
-                                                                       [*] xf86-input-keyboard
-                                                                       [*] xf86-input-mouse
-                                                                       [*] xf86-video-armsoc
-                                                                       [*] xf86-video-fbdev
-                                                                 ##### [ ] xf86-video-vesa
-                                                            protocl -> [*] dri2proto
-
-                                               [*] mesa3d -> [ ] Gallium swrast 
-                                                             [*] DRI swrast driver
-                                                       ##### [*] OpenGL EGL
-                                                             [*] OpenGL ES
-
-                                               [*] mesa3d-demos #requires (AI)GLX/GLU/GLEW
-                                               [*] xterm
-
-                        Libraries -> Graphics -> [*] Libdrm
-                                           ##### DRM Drivers -> [*] exynos (get latest non-exp)
-                                                 [*] Libdri2
-                                                 [*] Libglew
-                                                 [*] Libglu
-                                           ##### [*] Wayland
-
-                        Audio and video apps  -> [*] alsa-utils -> [*] speaker-test
-                                                 [*] ffmpeg
-                                                 [*] mplayer
-
-                        Networking apps -> [*] openssh
-                                           [*] rsync 
-
-                        Interpreters & Scripts -> [*] python
-                                                  core python modules -> [*] bzip2 module
-                                                                         [*] unicodedata module
-                                                                         [*] zlib module
-                                                                         [*] readline
-                                                                         [*] xml module
-
-      save configuration
-
-    $ cp .config configs/odroidxu3_mplayer_defconfig
-   ###ls configs/odroid*
-   ###make odroidxu3_mplayer_defconfig
+    - Configure BuildRoot
+      Buildroot is manully configured, like the Kernel, using "make menuconfig"
+    ? Use the appended instructions below "BuildRoot Menuconfig from scratch"
+      or you can copy the pre-made configuration in "instructions/Buildroot_XU3_MPlayer"
+       $ cp ~/instructions/Buildroot_XU3_MPlayer/odroidxu3_mplayer_defconfig configs/
+       $ make odroidxu3_mplayer
 
     $ sudo nano -w system/skeleton/etc/inittab
+      ...
       #add a few virtual consoles before the GENERIC_SERIAL
       tty1::respawn:/sbin/getty 38400 tty1
       tty2::respawn:/sbin/getty 38400 tty2
+      ...
 
-    $ sudo nano -w system/skeleton/etc/fstab
+    $ sudo nano -w system/skeleton/etc/fstab # change the root dev to actual
       #/dev/root      /               ext2    rw,noauto       0       1
       /dev/mmcblk0p2  /               ext4    rw,noauto       0       1
+      ...
 
 
     $ make -j$CPU_COUNT
 
-    - Install the root filesystem then configure network & xorg
+    - Install the root filesystem and youtube-dl
        $ sudo tar -xvf output/images/rootfs.tar -C /tmp/ODROID_ROOT
+       $ sudo wget http://yt-dl.org/downloads/2015.06.25/youtube-dl -O /tmp/ODROID_ROOT/usr/bin/youtube-dl.py.zip
+       $ sudo chmod a+rx /tmp/ODROID_ROOT/usr/bin/youtube-dl.py.zip
+
+    - then configure network & xorg
        $ sudo nano -w /tmp/ODROID_ROOT/etc/network/interfaces
+         ...
          # Configure eth0 with dhcp IP
          auto eth0
          iface eth0 inet dhcp
@@ -314,8 +230,6 @@ See instructions below: "Debug/Monitor/Serial console installation".
           Mode         0666
          EndSection
 
-    $ sudo wget http://yt-dl.org/downloads/2015.06.25/youtube-dl -O /tmp/ODROID_ROOT/usr/bin/youtube-dl.py.zip
-    $ sudo chmod a+rx /tmp/ODROID_ROOT/usr/bin/youtube-dl.py.zip
 
     $ sudo sync
     $ cd ~/xu3_mplayer
@@ -341,9 +255,10 @@ See instructions below: "Debug/Monitor/Serial console installation".
        $ make dtbs
        $ KRELEASE=$(make kernelrelease)
 
-    - Add/Update the new kernel and boot.ini on the microSD
+    - Add the kernel, it's modules, firmware, and boot.ini to the microSD. Initrd is not needed.
        $ sudo cp arch/arm/boot/zImage /tmp/ODROID_BOOT/
        $ sudo cp arch/arm/boot/dts/exynos5422-odroidxu3.dtb /tmp/ODROID_BOOT/
+       $ sudo make ARCH=arm CROSS_COMPILE=~/xu3_mplayer/gcc-linaro-4.9-2015.02-3-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf- INSTALL_MOD_PATH=/tmp/ODROID_ROOT modules_install
        $ sudo nano -w /tmp/ODROID_BOOT/boot.ini
          ODROIDXU-UBOOT-CONFIG
          setenv bootdelay "10"
@@ -358,8 +273,6 @@ See instructions below: "Debug/Monitor/Serial console installation".
          setenv bootargs "${bootrootfs} ${videoconfig} ${smsmacaddr} ${mmcrootdev} ${mmcrootfstype} ${debugdrivers}"
          boot
 
-      ###sudo rm -rf /tmp/ODROID_ROOT/lib/modules/*
-       $ sudo make ARCH=arm CROSS_COMPILE=~/xu3_mplayer/gcc-linaro-4.9-2015.02-3-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf- INSTALL_MOD_PATH=/tmp/ODROID_ROOT modules_install
 
     $ sudo sync
     $ cd ~/xu3_mplayer
@@ -397,37 +310,167 @@ See instructions below: "Debug/Monitor/Serial console installation".
     ! NOTICE: under some conditions the Odroid will need startup with the POWER button.
 
     - Login to the Odroid-XU3 as root, no password
-      Execute the following on the Odroid(#): 
-       # ping www.comcast.net
-       # speaker-test
-       # mplayer http://stream-tx1.radioparadise.com/mp3-128
-       # mplayer -cache 1024 -playlist http://somafm.com/groovesalad130.pls
+      Execute the following(>) on the Odroid: 
+       > ping www.comcast.net
+       > speaker-test
+       > mplayer http://stream-tx1.radioparadise.com/mp3-128
+       > mplayer -cache 1024 -playlist http://somafm.com/groovesalad130.pls
 
-       # export DISPLAY=:0.0 ; Xorg & sleep 1 ; twm &
+       > export DISPLAY=:0.0 ; Xorg & sleep 1 ; twm &
        - using the mouse press and hold the left button then select "Xterm"
          now continue in the Xterm window
-       # glxgears
-       # es2gears_x11
+       > glxgears
+       > es2gears_x11
 
        ! HINT: you can open a second Xtrem window, display this document, and use copy/paste
-          # ssh <USER>@<IPADDR>
-          # cat instructions/Buildroot_XU3_MPlayer/build_xu3_mplayer.ins
+          > ssh <USER>@<IPADDR>
+          > cat instructions/Buildroot_XU3_MPlayer/build_xu3_mplayer.ins
           - use shift-insert to paste selected text into the first Xterm window.
 
-       # wget http://samples.mplayerhq.hu/3D/DSCF1928_fish.AVI
-       # wget http://samples.mplayerhq.hu/MPEG-4/video.mp4
-       # mplayer DSCF1928_fish.AVI
-       # mplayer video.mp4
+       > wget http://samples.mplayerhq.hu/3D/DSCF1928_fish.AVI
+       > wget http://samples.mplayerhq.hu/MPEG-4/video.mp4
+       > mplayer DSCF1928_fish.AVI
+       > mplayer video.mp4
 
-       # mplayer -cache 8192 http://docs.gstreamer.com/media/sintel_trailer-480p.webm
-       # url="http://www.youtube.com/watch?v=gr-mt1P94cQ"
-       # youtube-dl.py.zip --no-check-certificate -q -o- $url | mplayer -cache 8192  -
-       # url="https://www.youtube.com/watch?v=vJpge3v0DO4"
-       # youtube-dl.py.zip --no-check-certificate -q -o- $url | mplayer -fs -cache 16384  -
+       > mplayer -cache 8192 http://docs.gstreamer.com/media/sintel_trailer-480p.webm
+       > url="http://www.youtube.com/watch?v=gr-mt1P94cQ"
+       > youtube-dl.py.zip --no-check-certificate -q -o- $url | mplayer -cache 8192  -
+       > url="https://www.youtube.com/watch?v=vJpge3v0DO4"
+       > youtube-dl.py.zip --no-check-certificate -q -o- $url | mplayer -fs -cache 16384  -
 
     - To shutdow the odroid ctrl-alt-F1
-       # kill -TERM $(ps aux | grep Xorg | grep -v grep | awk '{print $1}')
-       # poweroff
+      ###kill -TERM $(ps aux | grep Xorg | grep -v grep | awk '{print $1}')
+       > kill -TERM Xorg
+       > poweroff
+
+
+
+
+
+
+___________________________________________________
+
+    Create ARMSOC xdriver_xf86-video-armsoc.mk
+___________________________________________________
+###cd ~/xu3_mplayer/buildroot-2015.05
+ ! NOTICE: several versions of this driver code are currently being developed.
+   included in this '.mk' are a couple that can be de/selected using the comment symbol
+
+ $ cat <<'EOF' > package/x11r7/xdriver_xf86-video-armsoc/xdriver_xf86-video-armsoc.mk
+################################################################################
+#
+# xdriver_xf86-video-armsoc
+#
+################################################################################
+
+XDRIVER_XF86_VIDEO_ARMSOC_VERSION = 13a46a857369cf3627cf6d4d6f04e5420341cde3
+XDRIVER_XF86_VIDEO_ARMSOC_SITE = $(call github,mihailescu2m,xf86-video-armsoc,$(XDRIVER_XF86_VIDEO_ARMSOC_VERSION))
+#XDRIVER_XF86_VIDEO_ARMSOC_VERSION = 1.0.0
+#XDRIVER_XF86_VIDEO_ARMSOC_SITE = $(call github,endlessm,xf86-video-armsoc,$(XDRIVER_XF86_VIDEO_ARMSOC_VERSION))
+XDRIVER_XF86_VIDEO_ARMSOC_AUTORECONF = YES
+XDRIVER_XF86_VIDEO_ARMSOC_DEPENDENCIES = xserver_xorg-server xproto_fontsproto xproto_randrproto xproto_renderproto xproto_xextproto xproto_xproto
+XDRIVER_XF86_VIDEO_ARMSOC_CONF_OPTS = --with-drmmode=exynos --enable-maintainer-mode
+XDRIVER_XF86_VIDEO_ARMSOC_PRE_CONFIGURE_HOOKS += M4MKDIR_HOOK
+
+define M4MKDIR_HOOK
+-mkdir $(@D)/m4;
+endef
+
+define XDRIVER_XF86_VIDEO_ARMSOC_AUTOGEN_HOOK
+( \
+cd $(@D); \
+mkdir -p config; \
+touch AUTHORS; \
+$(HOST_DIR)/usr/bin/aclocal; \
+$(HOST_DIR)/usr/bin/autoheader; \
+$(HOST_DIR)/usr/bin/libtoolize --copy --force; \
+$(HOST_DIR)/usr/bin/automake --copy --add-missing --foreign; \
+$(HOST_DIR)/usr/bin/autoconf; \
+);
+endef
+
+XDRIVER_XF86_VIDEO_ARMSOC_PRE_CONFIGURE_HOOKS += XDRIVER_XF86_VIDEO_ARMSOC_AUTOGEN_HOOK
+
+$(eval $(autotools-package))
+EOF
+
+
+
+
+
+
+_________________________________
+
+BuildRoot Menuconfig from scratch
+_________________________________
+###cd ~/xu3_mplayer/buildroot-2015.05
+ $ sudo apt-get install ncurses-dev
+ $ make menuconfig # enable buildroot configurations as shown:
+
+   Target-options -> (ARM (little endian))
+                     Target Architecture Variant (cortex-A7)
+                     Target ABI (EABIhf)
+
+   Build options  -> [*] Enable compiler cache
+
+   Toolchain      -> Toolchain type (External toolchain)
+                     Toolchain (Custom toolchain)
+                     Toolchain origin (Pre-installed toolchain)
+                     ($HOME/xu3_mplayer/gcc-linaro-4.9-2015.02-3-x86_64_arm-linux-gnueabihf) Toolchain path
+                     (arm-linux-gnueabihf) Toolchain prefix
+                     External toolchain kernel headers series (3.17.x)
+                     External toolchain C library (glibc/eglibc)
+                     [*] Toolchain has RPC support? (NEW)
+                     [*] Toolchain has C++ support?
+
+   System configur-> /dev management (Dynamic using eudev)
+
+   Target packages-> Graphic libs & apps -> [*] X.org -> Servers -> xorg-server
+                                                                    X Window System server type (Modular X.org)
+                                                                    [*] Enable AIGLX Extension 
+                                                         Apps    -> [*] twm
+                                                                    [*] xclock
+                                                         Drivers -> [*] xf86-input-evdev
+                                                                    [*] xf86-input-keyboard
+                                                                    [*] xf86-input-mouse
+                                                                    [*] xf86-video-armsoc
+                                                                    [*] xf86-video-fbdev
+                                                              ##### [ ] xf86-video-vesa
+                                                         protocl -> [*] dri2proto
+
+                                            [*] mesa3d -> [ ] Gallium swrast 
+                                                          [*] DRI swrast driver
+                                                    ##### [*] OpenGL EGL
+                                                          [*] OpenGL ES
+
+                                            [*] mesa3d-demos #requires (AI)GLX/GLU/GLEW
+                                            [*] xterm
+
+                     Libraries -> Graphics -> [*] Libdrm
+                                        ##### DRM Drivers -> [*] exynos (get latest non-exp)
+                                              [*] Libdri2
+                                              [*] Libglew
+                                              [*] Libglu
+                                        ##### [*] Wayland
+
+                     Audio and video apps  -> [*] alsa-utils -> [*] speaker-test
+                                              [*] ffmpeg
+                                              [*] mplayer
+
+                     Networking apps -> [*] openssh
+                                        [*] rsync 
+
+                     Interpreters & Scripts -> [*] python
+                                               core python modules -> [*] bzip2 module
+                                                                      [*] unicodedata module
+                                                                      [*] zlib module
+                                                                      [*] readline
+                                                                      [*] xml module
+
+      save configuration
+
+ $ cp .config configs/odroidxu3_mplayer_defconfig
+
 
 
 
@@ -435,7 +478,7 @@ See instructions below: "Debug/Monitor/Serial console installation".
 
 _________________________________________
 
-Debug/Monitor/Serial console installation
+Debug Monitor Serial console instructions
 _________________________________________
 Connecting a desktop serial console/tty to the Odroid-XU3 Debug console
 
@@ -492,94 +535,6 @@ http://www.hardkernel.com/main/products/prdt_info.php?g_code=G134111883934
 
 
 
-________________________________________________
-
-Install Buildroot Remotely with Fastboot / Android tools (condensed version)
-________________________________________________
-Requires Odroid bootloader and Samsung firmware load, fwbl1 / bl2
-See instructions above for Installing u-boot and Partitioning microSD.
-To speed up fastboot's flash apply "Patch u-boot" below to skip the partition erase.
-###sudo apt-get install android-tools-fastboot android-tools-fsutils
-
- - Start fastboot on the odroid:
-   If Buildroot or Ubuntu is already installed you'll need a bootdelay in
-   the boot.ini below, then interupt the bootloader before the kernal loads.
-    - connect the OdroidXU3 to the development system with
-      a microUSB cable and the Debug console cable
-      see Debug Console Cable instructions in "Android_XU3_Build.doc"
-    - Open a new terminal for the Debug console and execute miniterm.
-       $ sudo miniterm.py --lf /dev/ttyUSB0 -b 115200
-    - Continuing in the Debug Console terminal, insert microSD into OdroidXU3.
-      Apply power and hold down the space bar, interrupting the bootloader.
-    - At the bootloader prompt, "Exynos5422 #", enter "fdisk -p 0"
-      These partition sizes will be needed later
-    - now enter "fastboot" and continue on the original desktop terminal
-
- ? IF you want to re-Flash the bootloader(s) with fastboot:
-   Caution! if the installation of these bootloaders fails you will
-   not be able to re-boot and use fastboot. If you feel the install
-   is corrupt then do not reboot until install is successful.
-   If you reboot with corrupt bootloaders you'll need to remove the
-   microSD from the Odroid and use instructions above for Installing u-boot
-    $ cd ~/xu3_mplayer/u-boot
-    $ fastboot flash fwbl1       sd_fuse/hardkernel/bl1.bin.hardkernel
-    $ fastboot flash bl2         sd_fuse/hardkernel/bl2.bin.hardkernel
-    $ fastboot flash bootloader  u-boot.bin
-    $ fastboot flash tzsw        sd_fuse/hardkernel/tzsw.bin.hardkernel
-
- - Flash Buildroot's root and boot partitions. Assuming they have been
-   previously built using instructions above. You will also need to provide
-   the partition sizes of the remote microSD. (fastboot getvar all: not suported)
-   See the "fdisk -p 0" from above. Use block count * 512
-    $ SIZEOF_DEV_SD1=134742016   #=$(expr   263168 \* 512)
-    $ SIZEOF_DEV_SD2=15794700288 #=$(expr 30849024 \* 512) 16G microSD
-
- - Buildroot boot image
-    $ rm /tmp/VFS_BOOT.img
-    $ dd if=/dev/zero of=/tmp/VFS_BOOT.img bs=1 count=0 seek=$SIZEOF_DEV_SD1 ; ls -alsh /tmp/VFS_BOOT.img
-    $ mkfs.vfat /tmp/VFS_BOOT.img ; ls -alsh /tmp/VFS_BOOT.img
-    $ fsck.vfat -fVv /tmp/VFS_BOOT.img # verify fat
-    $ sudo mount -o loop /tmp/VFS_BOOT.img /mnt
-    $ cd ~/xu3_mplayer/linux
-    $ KVERSION=$(grep -a "Linux version" vmlinux | awk -F " " '{ print $3 }')
-    $ echo "Installing kernel release "$KVERSION
-    $ sudo cp arch/arm/boot/zImage /mnt ;sudo sync ; ls -alsh /tmp/VFS_BOOT.img
-    $ sudo cp arch/arm/boot/dts/exynos5422-odroidxu3.dtb /mnt ;sudo sync ; ls -alsh /tmp/VFS_BOOT.img
-    $ sudo nano -w /mnt/boot.ini ; ls -alsh /tmp/VFS_BOOT.img
-      verify/copy the config from boot.ini above
-    $ sudo umount /mnt ; ls -alsh /tmp/VFS_BOOT.img
-    $ fastboot flash fat /tmp/VFS_BOOT.img
-
- - Buildroot root image
-    $ rm /tmp/VFS_ROOT.img
-    $ dd if=/dev/zero of=/tmp/VFS_ROOT.img bs=1 count=0 seek=$SIZEOF_DEV_SD2 ; ls -alsh /tmp/VFS_ROOT.img
-    $ mkfs.ext4 -O ^has_journal -U e139ce78-9841-40fe-8823-96a304a09859 /tmp/VFS_ROOT.img ; ls -alsh /tmp/VFS_ROOT.img
-      Warning: Not a block special device. Proceed anyway? (y,n) y
-    $ fsck.ext4 -fv /tmp/VFS_ROOT.img # verify ext4 no journal and UUID
-    $ tune2fs -l /tmp/VFS_ROOT.img | grep -E 'features|UUID'
-    $ sudo mount -o loop /tmp/VFS_ROOT.img /mnt
-    $ cd ~/xu3_mplayer/buildroot-2015.05
-    $ sudo tar -xvf output/images/rootfs.tar -C /mnt ; sudo sync ; ls -alsh /tmp/VFS_ROOT.img
-    $ cd ~/xu3_mplayer/linux
-    $ sudo make ARCH=arm CROSS_COMPILE=~/xu3_mplayer/gcc-linaro-4.9-2015.02-3-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf- INSTALL_MOD_PATH=/mnt modules_install
-    $ sudo nano -w /mnt/etc/network/interfaces
-      verify/copy the config from interfaces above
-    $ sudo mkdir /mnt/etc/X11
-    $ sudo nano -w /mnt/etc/X11/xorg.conf
-      verify/copy the config from xorg.conf above
-    $ sudo umount /mnt ; ls -alsh /tmp/VFS_ROOT.img
-    $ cd ~/xu3_mplayer
-    $ img2simg /tmp/VFS_ROOT.img /tmp/VFS_ROOT.simg ; ls -alsh /tmp/VFS_ROOT.*
-    $ fastboot flash system /tmp/VFS_ROOT.simg
-
- $ fastboot reboot
- ! DO NOT "fastboot flash" boot, kernel, ramdisk, userdata, or cache. These
-   images are specific to Android and may over-write Buildroot partitions.
-
-
-
-
-
 ______________________________________
 
 Patch u-boot / fastboot; no erase when flash partition
@@ -597,6 +552,91 @@ ______________________________________
  				argv[3] = device;
 
 
+
+
+
+
+
+________________________________________________
+
+Install Buildroot Remotely with Fastboot / Android tools (condensed version)
+________________________________________________
+Requires Odroid bootloader and Samsung firmware load, fwbl1 / bl2
+See instructions above for Installing u-boot and Partitioning microSD.
+To speed up fastboot's flash apply "Patch u-boot" below to skip the partition erase.
+###sudo apt-get install android-tools-fastboot android-tools-fsutils
+
+ - Start fastboot on the odroid:
+    - connect the OdroidXU3 to the development system with a microUSB cable
+      and the Debug console cable. see Debug Monitor instructions above
+    - Open a new terminal for the Debug console and execute miniterm.
+       $ sudo miniterm.py --lf /dev/ttyUSB0 -b 115200
+    - Continuing in the Debug Console terminal, insert microSD into OdroidXU3.
+      Apply power and hold down the space bar, interrupting the bootloader.
+    - At the bootloader prompt, "Exynos5422 #", enter "fdisk -p 0". These
+      partition sizes will be needed later. (fastboot getvar all: not suported)
+    - now enter "fastboot" and continue on the original desktop terminal
+
+ ? IF you want to re-Flash the bootloader(s):
+   Caution! if the installation of these bootloaders fails you will
+   not be able to re-boot and use fastboot. If you feel the install
+   is corrupt then do not reboot until install is successful.
+   If you reboot with corrupt bootloaders you'll need to remove the
+   microSD from the Odroid and use instructions above for Installing u-boot
+    $ cd ~/xu3_mplayer/u-boot
+    $ fastboot flash fwbl1       sd_fuse/hardkernel/bl1.bin.hardkernel
+    $ fastboot flash bl2         sd_fuse/hardkernel/bl2.bin.hardkernel
+    $ fastboot flash bootloader  u-boot.bin
+    $ fastboot flash tzsw        sd_fuse/hardkernel/tzsw.bin.hardkernel
+
+ - Flash Buildroot's root and boot partitions. Assuming they have been
+   previously built using instructions above. You will also need to provide
+   the partition sizes of the remote microSD.
+   See the "fdisk -p 0" from above. Use block count * 512
+    $ SIZEOF_DEV_SD1=134742016   #=$(expr   263168 \* 512)
+    $ SIZEOF_DEV_SD2=15794700288 #=$(expr 30849024 \* 512) 16G microSD
+
+ - Buildroot boot image
+    $ rm /tmp/VFS_BOOT.img
+    $ dd if=/dev/zero of=/tmp/VFS_BOOT.img bs=1 count=0 seek=$SIZEOF_DEV_SD1 ; ls -alsh /tmp/VFS_BOOT.img
+    $ mkfs.vfat /tmp/VFS_BOOT.img ; ls -alsh /tmp/VFS_BOOT.img
+    $ fsck.vfat -fVv /tmp/VFS_BOOT.img # verify fat
+    $ sudo mount -o loop /tmp/VFS_BOOT.img /mnt
+    $ cd ~/xu3_mplayer/linux
+    $ KVERSION=$(grep -a "Linux version" vmlinux | awk -F " " '{ print $3 }')
+    $ echo "Installing kernel release "$KVERSION
+    $ sudo cp arch/arm/boot/zImage /mnt ;sudo sync ; ls -alsh /tmp/VFS_BOOT.img
+    $ sudo cp arch/arm/boot/dts/exynos5422-odroidxu3.dtb /mnt ;sudo sync ; ls -alsh /tmp/VFS_BOOT.img
+    $ sudo nano -w /mnt/boot.ini ; ls -alsh /tmp/VFS_BOOT.img
+      verify/copy the boot.ini from above
+    $ sudo umount /mnt ; ls -alsh /tmp/VFS_BOOT.img
+    $ fastboot flash fat /tmp/VFS_BOOT.img
+
+ - Buildroot root image
+    $ rm /tmp/VFS_ROOT.img
+    $ dd if=/dev/zero of=/tmp/VFS_ROOT.img bs=1 count=0 seek=$SIZEOF_DEV_SD2 ; ls -alsh /tmp/VFS_ROOT.img
+    $ mkfs.ext4 -O ^has_journal -U e139ce78-9841-40fe-8823-96a304a09859 /tmp/VFS_ROOT.img ; ls -alsh /tmp/VFS_ROOT.img
+      Warning: Not a block special device. Proceed anyway? (y,n) y
+    $ fsck.ext4 -fv /tmp/VFS_ROOT.img # verify ext4 no journal and UUID
+    $ tune2fs -l /tmp/VFS_ROOT.img | grep -E 'features|UUID'
+    $ sudo mount -o loop /tmp/VFS_ROOT.img /mnt
+    $ cd ~/xu3_mplayer/buildroot-2015.05
+    $ sudo tar -xvf output/images/rootfs.tar -C /mnt ; sudo sync ; ls -alsh /tmp/VFS_ROOT.img
+    $ cd ~/xu3_mplayer/linux
+    $ sudo make ARCH=arm CROSS_COMPILE=~/xu3_mplayer/gcc-linaro-4.9-2015.02-3-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf- INSTALL_MOD_PATH=/mnt modules_install
+    $ sudo nano -w /mnt/etc/network/interfaces
+      verify/copy the interfaces config from above
+    $ sudo mkdir /mnt/etc/X11
+    $ sudo nano -w /mnt/etc/X11/xorg.conf
+      verify/copy the xorg.conf from above
+    $ sudo umount /mnt ; ls -alsh /tmp/VFS_ROOT.img
+    $ cd ~/xu3_mplayer
+    $ img2simg /tmp/VFS_ROOT.img /tmp/VFS_ROOT.simg ; ls -alsh /tmp/VFS_ROOT.*
+    $ fastboot flash system /tmp/VFS_ROOT.simg
+
+ $ fastboot reboot
+ ! DO NOT "fastboot flash" boot, kernel, ramdisk, userdata, or cache. These
+   images are specific to Android and may over-write Buildroot partitions.
 
 
 
