@@ -1,13 +1,13 @@
-______________________________________
+___________________________________________
 
 Build a BuildRoot system for the Odroid-XU3.
-______________________________________
+___________________________________________
 These procedures were written to be executed on an Ubuntu 14.04 x86 desktop.
 There is no requirement to preform S/W development on the Odroid-XU3 itself.
 The Odroid-XU3 will not require a previously installed system.
 The BuildRoot system will be placed onto a microSD that will boot the Odroid-XU3
 or the system can be transfered to the Odroid-XU3 remotely using Android fastboot.
-See instructions below: "Debug/Monitor/Serial console installation".
+For fastboot see appended instructions: "Debug Monitor serial console instructions".
 
  $ mkdir ~/xu3_mplayer
  $ cd ~/xu3_mplayer
@@ -17,32 +17,34 @@ See instructions below: "Debug/Monitor/Serial console installation".
     $ REPO_URL_PATH="https://github.com/glscantlen/instructions/raw/master/Buildroot_XU3_MPlayer"
     $ wget $REPO_URL_PATH/build_xu3_mplayer.ins -O ./build_xu3_mplayer_new.ins
 
-   __________________________
- - Disable Ubuntu's automount. Automount should not be used for these procedures.
+   ___________________________________________
+ - Disable Ubuntu's automount. Automount should be disabled for these instructions.
     $ gsettings set org.gnome.desktop.media-handling automount false
     ? IF after this installation you want to revert this configuration:
        $ gsettings set org.gnome.desktop.media-handling automount true
 
 
-   ______________________________________
- - Insert the microSD onto the desktop system and verify it's path name.
-   The device path will be something like "/dev/sdX" or "/dev/mmcX"
+   ___________________________________________
+ - Insert the microSD onto the desktop system and verify it's device path.
+   The path name will be something like "/dev/sdX" or "/dev/mmcX"
    Replace "sdX" in the following instructions with correct device name for the microSD.
    !!! CAUTION !!! dd can destroy the contents of your mounted system disk.
-   Make sure /dev/sdX is the correct device for the microSD.
+   Make sure /dev/sdX is the correct device for the.
     $ sudo partprobe
     $ cat /proc/partitions
     $ DEV_SD=/dev/sdX  # !!! make sure this is your microSD
-    $ sudo umount $DEV_SD? # un-mount any mounted partitions
+    $ sudo umount $DEV_SD? # un-mount any mounted microSD partitions
 
 
-   __________________________
+   ___________________________________________
  - Install the Development environment
+    $ sudo apt-get install git ccache xz-utils #NA g++-arm-linux-gnueabihf p7zip-full 
     $ wget http://releases.linaro.org/15.02/components/toolchain/binaries/arm-linux-gnueabihf/gcc-linaro-4.9-2015.02-3-x86_64_arm-linux-gnueabihf.tar.xz
     $ tar -xvJf gcc-linaro-4.9-2015.02-3-x86_64_arm-linux-gnueabihf.tar.xz
-    $ ls -als ~/xu3_mplayer/gcc-linaro-4.9-2015.02-3-x86_64_arm-linux-gnueabihf/bin
+    $ ln -s gcc-linaro-4.9-2015.02-3-x86_64_arm-linux-gnueabihf/bin linaro-4.9
+    $ export CROSS_COMPILE=~/xu3_mplayer/linaro-4.9/arm-linux-gnueabihf-
+    $ ls $CROSS_COMPILE*
     $ export ARCH=arm
-    $ export CROSS_COMPILE=~/xu3_mplayer/gcc-linaro-4.9-2015.02-3-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf-
     $ CPU_COUNT=$(grep processor /proc/cpuinfo | awk '{count=$NF};END{print count+1}')
 
 
@@ -181,12 +183,12 @@ See instructions below: "Debug/Monitor/Serial console installation".
          ###cp ~/instructions/Buildroot_XU3_MPlayer/xdriver_xf86-video-armsoc.mk package/x11r7/xdriver_xf86-video-armsoc/
           $ wget $REPO_URL_PATH/xdriver_xf86-video-armsoc.mk -O package/x11r7/xdriver_xf86-video-armsoc/xdriver_xf86-video-armsoc.mk
 
-    - Configure BuildRoot
-      Buildroot is manully configured, like the Kernel, using "make menuconfig"
-    ? Use the appended instructions below "BuildRoot Menuconfig from scratch"
-      or you can copy the pre-made configuration in "instructions/Buildroot_XU3_MPlayer"
+    ? IF you mant to configure BuildRoot manully using "make menuconfig", use
+      the appended instructions below "BuildRoot Menuconfig from scratch"
+    ? ELSE you can copy the pre-made configuration from this repository folder.
       ###cp ~/instructions/Buildroot_XU3_MPlayer/odroidxu3_mplayer_defconfig configs/
        $ wget $REPO_URL_PATH/odroidxu3_mplayer_defconfig -O configs/odroidxu3_mplayer_defconfig
+       $ ls $HOME/xu3_mplayer/linaro-4.9
        $ make odroidxu3_mplayer_defconfig
 
     - Install Youtube-dl
@@ -426,6 +428,7 @@ BuildRoot Menuconfig from scratch
 _________________________________
 ###cd ~/xu3_mplayer/buildroot-2015.05
  $ sudo apt-get install ncurses-dev
+ $ ls $HOME/xu3_mplayer/linaro-4.9
  $ make menuconfig # enable buildroot configurations as shown:
 
    Target-options -> (ARM (little endian))
@@ -437,7 +440,7 @@ _________________________________
    Toolchain      -> Toolchain type (External toolchain)
                      Toolchain (Custom toolchain)
                      Toolchain origin (Pre-installed toolchain)
-                     ($(HOME)/xu3_mplayer/gcc-linaro-4.9-2015.02-3-x86_64_arm-linux-gnueabihf) Toolchain path
+                     ($(HOME)/xu3_mplayer/linaro-4.9) Toolchain path
                      (arm-linux-gnueabihf) Toolchain prefix
                      External toolchain kernel headers series (3.17.x)
                      External toolchain C library (glibc/eglibc)
@@ -500,7 +503,7 @@ _________________________________
 
 _________________________________________
 
-Debug Monitor Serial console instructions
+Debug Monitor serial console instructions
 _________________________________________
 Connecting a desktop serial console/tty to the Odroid-XU3 Debug console
 
