@@ -12,6 +12,11 @@ See instructions below: "Debug/Monitor/Serial console installation".
  $ mkdir ~/xu3_mplayer
  $ cd ~/xu3_mplayer
 
+   ___________________________________________
+ - Retrive the latest copy of this instruction
+    $ REPO_URL_PATH="https://github.com/glscantlen/instructions/raw/master/Buildroot_XU3_MPlayer"
+    $ wget $REPO_URL_PATH/build_xu3_mplayer.ins -O ./build_xu3_mplayer_new.ins
+
    __________________________
  - Disable Ubuntu's automount. Automount should not be used for these procedures.
     $ gsettings set org.gnome.desktop.media-handling automount false
@@ -137,6 +142,7 @@ See instructions below: "Debug/Monitor/Serial console installation".
 
    _______________________________________________
  - Build and install the BuildRoot system
+   ###REPO_URL_PATH="https://github.com/glscantlen/instructions/raw/master/Buildroot_XU3_MPlayer"
    ###CPU_COUNT=$(grep processor /proc/cpuinfo | awk '{count=$NF};END{print count+1}')
    ###sudo mount [ [$DEV_SD'2'] OR [-o loop /tmp/VFS_ROOT.img] ] /tmp/ODROID_ROOT
    ###cd ~/xu3_mplayer
@@ -145,9 +151,11 @@ See instructions below: "Debug/Monitor/Serial console installation".
     $ tar -xvjf buildroot-2015.05.tar.bz2
     $ cd buildroot-2015.05
 
-    - Add "armsoc" video driver config/build to Buildroot's X11
+    $ make clean
+
+    - Add "armsoc" video driver config/build to Buildroot's X11 (Kconfig)
        # insert a line for the armsoc package into the x11r7/Config.in
-         armsoc is added to the drivers menu in alphabetic order.
+         armsoc is added to the "X11R7 Drivers" menu in alphabetic order.
        $ nano -w package/x11r7/Config.in
          ...
          <TAB><TAB>source package/x11r7/xdriver_xf86-video-ark/Config.in
@@ -169,66 +177,70 @@ See instructions below: "Debug/Monitor/Serial console installation".
 
        - Create a '.mk' file for download and build of the armsoc driver code
        ? Use the appended instructions below "Create ARMSOC xdriver_xf86-video-armsoc.mk"
-         or copy the pre-written file from "instructions/Buildroot_XU3_MPlayer"
-          $ cp ~/instructions/Buildroot_XU3_MPlayer/xdriver_xf86-video-armsoc.mk package/x11r7/xdriver_xf86-video-armsoc/
+         or copy the pre-written .mk file from "instructions/Buildroot_XU3_MPlayer"
+         ###cp ~/instructions/Buildroot_XU3_MPlayer/xdriver_xf86-video-armsoc.mk package/x11r7/xdriver_xf86-video-armsoc/
+          $ wget $REPO_URL_PATH/xdriver_xf86-video-armsoc.mk -O package/x11r7/xdriver_xf86-video-armsoc/xdriver_xf86-video-armsoc.mk
 
     - Configure BuildRoot
       Buildroot is manully configured, like the Kernel, using "make menuconfig"
     ? Use the appended instructions below "BuildRoot Menuconfig from scratch"
       or you can copy the pre-made configuration in "instructions/Buildroot_XU3_MPlayer"
-       $ cp ~/instructions/Buildroot_XU3_MPlayer/odroidxu3_mplayer_defconfig configs/
-       $ make odroidxu3_mplayer
+      ###cp ~/instructions/Buildroot_XU3_MPlayer/odroidxu3_mplayer_defconfig configs/
+       $ wget $REPO_URL_PATH/odroidxu3_mplayer_defconfig -O configs/odroidxu3_mplayer_defconfig
+       $ make odroidxu3_mplayer_defconfig
 
-    $ sudo nano -w system/skeleton/etc/inittab
+    - Install Youtube-dl
+    $ wget http://yt-dl.org/downloads/2015.06.25/youtube-dl -O system/skeleton/usr/bin/youtube-dl.py.zip
+    $ chmod a+rx system/skeleton/usr/bin/youtube-dl.py.zip
+
+    - configure #of ctrl-alt-F terminals
+    $ nano -w system/skeleton/etc/inittab
       ...
       #add a few virtual consoles before the GENERIC_SERIAL
       tty1::respawn:/sbin/getty 38400 tty1
       tty2::respawn:/sbin/getty 38400 tty2
       ...
 
-    $ sudo nano -w system/skeleton/etc/fstab # change the root dev to actual
+    - configure root mount to microSD partition #2
+    $ nano -w system/skeleton/etc/fstab # change the root dev to actual
       #/dev/root      /               ext2    rw,noauto       0       1
       /dev/mmcblk0p2  /               ext4    rw,noauto       0       1
       ...
 
+    - configure Xorg
+    $ mkdir system/skeleton/etc/X11
+    $ nano -w system/skeleton/etc/X11/xorg.conf
+      Section     "Device"
+       Identifier  "Mali-Fbdev"
+       Driver      "armsoc"
+       Option      "fbdev"        "/dev/fb0"
+       Option      "Debug"        "false"
+       Option      "DPMS"         "false"
+      EndSection
+      Section        "Screen"
+       Identifier     "Default Screen"
+       Device         "Mali-Fbdev"
+       DefaultDepth   24
+      EndSection
+      Section      "ServerLayout"
+       Identifier   "Default Layout"
+       Option       "BlankTime"        "0"
+       Option       "StandbyTime"      "0"
+       Option       "SuspendTime"      "0"
+       Option       "OffTime"          "0"
+      EndSection
+      Section      "DRI"
+       Mode         0666
+      EndSection
 
+    $ nano -w support/scripts/config_eth
+      echo "auto eth0" >> output/target/etc/network/interfaces
+      echo "iface eth0 inet dhcp" >> output/target/etc/network/interfaces
+    $ chmod +x support/scripts/config_eth
+
+    - build and install the root file system
     $ make -j$CPU_COUNT
-
-    - Install the root filesystem and youtube-dl
-       $ sudo tar -xvf output/images/rootfs.tar -C /tmp/ODROID_ROOT
-       $ sudo wget http://yt-dl.org/downloads/2015.06.25/youtube-dl -O /tmp/ODROID_ROOT/usr/bin/youtube-dl.py.zip
-       $ sudo chmod a+rx /tmp/ODROID_ROOT/usr/bin/youtube-dl.py.zip
-
-    - then configure network & xorg
-       $ sudo nano -w /tmp/ODROID_ROOT/etc/network/interfaces
-         ...
-         # Configure eth0 with dhcp IP
-         auto eth0
-         iface eth0 inet dhcp
-       $ sudo mkdir /tmp/ODROID_ROOT/etc/X11
-       $ sudo nano -w /tmp/ODROID_ROOT/etc/X11/xorg.conf
-         Section     "Device"
-          Identifier  "Mali-Fbdev"
-          Driver      "armsoc"
-          Option      "fbdev"        "/dev/fb0"
-          Option      "Debug"        "false"
-          Option      "DPMS"         "false"
-         EndSection
-         Section        "Screen"
-          Identifier     "Default Screen"
-          Device         "Mali-Fbdev"
-          DefaultDepth   24
-         EndSection
-         Section      "ServerLayout"
-          Identifier   "Default Layout"
-          Option       "BlankTime"        "0"
-          Option       "StandbyTime"      "0"
-          Option       "SuspendTime"      "0"
-          Option       "OffTime"          "0"
-         EndSection
-         Section      "DRI"
-          Mode         0666
-         EndSection
+    $ sudo tar -xvf output/images/rootfs.tar -C /tmp/ODROID_ROOT
 
 
     $ sudo sync
@@ -255,7 +267,7 @@ See instructions below: "Debug/Monitor/Serial console installation".
        $ make dtbs
        $ KRELEASE=$(make kernelrelease)
 
-    - Add the kernel, it's modules, firmware, and boot.ini to the microSD. Initrd is not needed.
+    - Copy the kernel, modules, firmware, and boot.ini to the boot filesystem. Initrd is not used.
        $ sudo cp arch/arm/boot/zImage /tmp/ODROID_BOOT/
        $ sudo cp arch/arm/boot/dts/exynos5422-odroidxu3.dtb /tmp/ODROID_BOOT/
        $ sudo make ARCH=arm CROSS_COMPILE=~/xu3_mplayer/gcc-linaro-4.9-2015.02-3-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf- INSTALL_MOD_PATH=/tmp/ODROID_ROOT modules_install
@@ -340,7 +352,7 @@ See instructions below: "Debug/Monitor/Serial console installation".
 
     - To shutdow the odroid ctrl-alt-F1
       ###kill -TERM $(ps aux | grep Xorg | grep -v grep | awk '{print $1}')
-       > kill -TERM Xorg
+       > killall -TERM Xorg
        > poweroff
 
 
@@ -352,11 +364,28 @@ ___________________________________________________
 
     Create ARMSOC xdriver_xf86-video-armsoc.mk
 ___________________________________________________
+Thanks to Legath on the Odroid forum for help with this .mk and thanks to mihailescu2m
+for providing the fastest armsoc driver I've tested, comparing glxgears framerate.
+Other libs & drivers for es2gears_x11/wayland still need config/built/installed.
 ###cd ~/xu3_mplayer/buildroot-2015.05
- ! NOTICE: several versions of this driver code are currently being developed.
-   included in this '.mk' are a couple that can be de/selected using the comment symbol
 
- $ cat <<'EOF' > package/x11r7/xdriver_xf86-video-armsoc/xdriver_xf86-video-armsoc.mk
+ ! NOTICE: several versions of this driver code are currently being developed.
+   included in this '.mk' are a couple that can be de/selected using the comment (#).
+    ? If you change the driver on a re-build you should remove the old driver code.
+       $ rm -rf output/build/xdriver_xf86-video-armsoc-1.0.0
+       $ rm dl/xdriver_xf86-video-armsoc-1.0.0.tar.gz
+         OR
+       $ make xdriver_xf86-video-armsoc-dirclean
+         AND to re-install
+       $ make xdriver_xf86-video-armsoc-reinstall
+       $ ls -als output/target/usr/lib/xorg/modules/drivers
+         Need make to re-create the tar
+       $ ls -als output/images
+       $ make -j4
+
+       $ nano -w package/x11r7/xdriver_xf86-video-armsoc/xdriver_xf86-video-armsoc.mk
+         Copy/Paste the following  as-is, keeping the tabs.
+
 ################################################################################
 #
 # xdriver_xf86-video-armsoc
@@ -367,32 +396,24 @@ XDRIVER_XF86_VIDEO_ARMSOC_VERSION = 13a46a857369cf3627cf6d4d6f04e5420341cde3
 XDRIVER_XF86_VIDEO_ARMSOC_SITE = $(call github,mihailescu2m,xf86-video-armsoc,$(XDRIVER_XF86_VIDEO_ARMSOC_VERSION))
 #XDRIVER_XF86_VIDEO_ARMSOC_VERSION = 1.0.0
 #XDRIVER_XF86_VIDEO_ARMSOC_SITE = $(call github,endlessm,xf86-video-armsoc,$(XDRIVER_XF86_VIDEO_ARMSOC_VERSION))
+#XDRIVER_XF86_VIDEO_ARMSOC_VERSION = 1.3.0
+#XDRIVER_XF86_VIDEO_ARMSOC_SITE = git://anongit.freedesktop.org/xorg/driver/xf86-video-armsoc
 XDRIVER_XF86_VIDEO_ARMSOC_AUTORECONF = YES
 XDRIVER_XF86_VIDEO_ARMSOC_DEPENDENCIES = xserver_xorg-server xproto_fontsproto xproto_randrproto xproto_renderproto xproto_xextproto xproto_xproto
 XDRIVER_XF86_VIDEO_ARMSOC_CONF_OPTS = --with-drmmode=exynos --enable-maintainer-mode
-XDRIVER_XF86_VIDEO_ARMSOC_PRE_CONFIGURE_HOOKS += M4MKDIR_HOOK
 
 define M4MKDIR_HOOK
--mkdir $(@D)/m4;
+	-mkdir $(@D)/m4;
 endef
+XDRIVER_XF86_VIDEO_ARMSOC_PRE_CONFIGURE_HOOKS += M4MKDIR_HOOK
 
 define XDRIVER_XF86_VIDEO_ARMSOC_AUTOGEN_HOOK
-( \
-cd $(@D); \
-mkdir -p config; \
-touch AUTHORS; \
-$(HOST_DIR)/usr/bin/aclocal; \
-$(HOST_DIR)/usr/bin/autoheader; \
-$(HOST_DIR)/usr/bin/libtoolize --copy --force; \
-$(HOST_DIR)/usr/bin/automake --copy --add-missing --foreign; \
-$(HOST_DIR)/usr/bin/autoconf; \
-);
+	mkdir -p $(@D)/config
+	touch $(@D)/AUTHORS
 endef
-
 XDRIVER_XF86_VIDEO_ARMSOC_PRE_CONFIGURE_HOOKS += XDRIVER_XF86_VIDEO_ARMSOC_AUTOGEN_HOOK
 
 $(eval $(autotools-package))
-EOF
 
 
 
@@ -416,7 +437,7 @@ _________________________________
    Toolchain      -> Toolchain type (External toolchain)
                      Toolchain (Custom toolchain)
                      Toolchain origin (Pre-installed toolchain)
-                     ($HOME/xu3_mplayer/gcc-linaro-4.9-2015.02-3-x86_64_arm-linux-gnueabihf) Toolchain path
+                     ($(HOME)/xu3_mplayer/gcc-linaro-4.9-2015.02-3-x86_64_arm-linux-gnueabihf) Toolchain path
                      (arm-linux-gnueabihf) Toolchain prefix
                      External toolchain kernel headers series (3.17.x)
                      External toolchain C library (glibc/eglibc)
@@ -424,6 +445,7 @@ _________________________________
                      [*] Toolchain has C++ support?
 
    System configur-> /dev management (Dynamic using eudev)
+                     (support/scripts/config_eth) Custom scripts to run before creating filesystem images
 
    Target packages-> Graphic libs & apps -> [*] X.org -> Servers -> xorg-server
                                                                     X Window System server type (Modular X.org)
@@ -466,11 +488,11 @@ _________________________________
                                                                       [*] zlib module
                                                                       [*] readline
                                                                       [*] xml module
-
+                                                                      [*] ssl  
       save configuration
 
- $ cp .config configs/odroidxu3_mplayer_defconfig
-
+ $ make savedefconfig BR2_DEFCONFIG=configs/odroidxu3_mplayer_defconfig
+###cp .config ../odroidxu3_mplayer_fullconfig
 
 
 
@@ -525,7 +547,7 @@ http://www.hardkernel.com/main/products/prdt_info.php?g_code=G134111883934
           - disable Hardware Flow Control :
             select "Serial port setup", "F", <enter>, "exit"
     ? OR you're using miniterm.py
-       $ sudo miniterm.py --lf $DEBUG_TTY 115200
+       $ sudo miniterm.py --lf $DEBUG_TTY -b 115200
 
     - boot the Odroid then test the console
       Execute in the console terminal:
@@ -624,11 +646,6 @@ To speed up fastboot's flash apply "Patch u-boot" below to skip the partition er
     $ sudo tar -xvf output/images/rootfs.tar -C /mnt ; sudo sync ; ls -alsh /tmp/VFS_ROOT.img
     $ cd ~/xu3_mplayer/linux
     $ sudo make ARCH=arm CROSS_COMPILE=~/xu3_mplayer/gcc-linaro-4.9-2015.02-3-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf- INSTALL_MOD_PATH=/mnt modules_install
-    $ sudo nano -w /mnt/etc/network/interfaces
-      verify/copy the interfaces config from above
-    $ sudo mkdir /mnt/etc/X11
-    $ sudo nano -w /mnt/etc/X11/xorg.conf
-      verify/copy the xorg.conf from above
     $ sudo umount /mnt ; ls -alsh /tmp/VFS_ROOT.img
     $ cd ~/xu3_mplayer
     $ img2simg /tmp/VFS_ROOT.img /tmp/VFS_ROOT.simg ; ls -alsh /tmp/VFS_ROOT.*
