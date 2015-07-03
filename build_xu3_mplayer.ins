@@ -53,33 +53,35 @@ For fastboot see appended instructions: "Debug Monitor serial console instructio
    ###DEV_SD=/dev/sdX  # !!! make sure this is your microSD
    ###cd ~/xu3_mplayer
 
-    ! Note: bootloaders can be re-installed remotely with fastboot if bootloaders are
-      already installed and running on the odroid. see "Install Buildroot Remotely" below.
-
     $ git clone https://github.com/hardkernel/u-boot.git -b odroidxu3-v2012.07
     $ cd u-boot
+
+    ! Notice: There is no Pre-built u-boot.bin with a fastboot that supports this
+      partitioning scheme. You must build and install a custom u-boot for fastboot.
+      Also, bootloaders can be re-installed remotely with fastboot, if this u-boot
+      is already installed and running on the odroid.
+      See appended instructions below: "Install Buildroot Remotely".
 
     - wipe the front 100M of microSD and restore an msdos MBR
        $ sudo dd if=/dev/zero of=$DEV_SD bs=512 count=200000 conv=noerror,sync
        $ sudo parted $DEV_SD "mklabel msdos"
-       ! Notice: mklabel will also erase the non-tabled-partitions (fused blobs)
+       ! Note: mklabel alone will erase the non-tabled-partitions (fused blobs)
 
     ? IF you want to install hardkernel's Pre-built bootloaders onto the microSD
-      and you do NOT wish to use fastboot, remote partition flashing then:
+      and you do NOT wish to use fastboot to remotely flash partitions then:
       ###chmod +x sd_fuse/hardkernel/sd_fusing.sh
-       ! Note: A Pre-built u-boot.bin that supports fastboot on Odroidxu3 is not available.
        $ cd sd_fuse/hardkernel/
        $ sudo ./sd_fusing.sh $DEV_SD
 
     ? ELSE you can build and install a custom u-boot on the microSD
       and you may use fastboot to remotely flash partitions onto the Odroid:
       ###CPU_COUNT=$(grep processor /proc/cpuinfo | awk '{count=$NF};END{print count+1}')
-      ###export CROSS_COMPILE=~/xu3_mplayer/gcc-linaro-4.9-2015.02-3-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf-
+      ###export CROSS_COMPILE=~/xu3_mplayer/linaro-4.9/arm-linux-gnueabihf-
 
        ! Modify fastboot for faster flashing. Skip erasing the partitions.
-          $ gedit common/cmd_fastboot.c # see "Patch u-boot" below
-            @ ~line 593 of cmd_fastboot.c modify as follows:
-               if (0)/*(bl_cnt>>10)*/
+       $ gedit common/cmd_fastboot.c # see appended "Patch u-boot" below.
+         @ ~line 593 of cmd_fastboot.c modify as follows:
+            if (0)/*(bl_cnt>>10)*/
 
        $ grep -E "Target|odroid" boards.cfg
        $ make odroid_config
@@ -179,11 +181,11 @@ For fastboot see appended instructions: "Debug Monitor serial console instructio
 
        - Create a '.mk' file for download and build of the armsoc driver code
        ? Use the appended instructions below "Create ARMSOC xdriver_xf86-video-armsoc.mk"
-         or copy the pre-written .mk file from "instructions/Buildroot_XU3_MPlayer"
+       ? or copy the pre-written .mk file from "instructions/Buildroot_XU3_MPlayer"
          ###cp ~/instructions/Buildroot_XU3_MPlayer/xdriver_xf86-video-armsoc.mk package/x11r7/xdriver_xf86-video-armsoc/
           $ wget $REPO_URL_PATH/xdriver_xf86-video-armsoc.mk -O package/x11r7/xdriver_xf86-video-armsoc/xdriver_xf86-video-armsoc.mk
 
-    ? IF you mant to configure BuildRoot manully using "make menuconfig", use
+    ? IF you want to configure BuildRoot manully using "make menuconfig", use
       the appended instructions below "BuildRoot Menuconfig from scratch"
     ? ELSE you can copy the pre-made configuration from this repository folder.
       ###cp ~/instructions/Buildroot_XU3_MPlayer/odroidxu3_mplayer_defconfig configs/
@@ -191,7 +193,7 @@ For fastboot see appended instructions: "Debug Monitor serial console instructio
        $ ls $HOME/xu3_mplayer/linaro-4.9
        $ make odroidxu3_mplayer_defconfig
 
-    - Install Youtube-dl
+    - Install youtube-dl
     $ wget http://yt-dl.org/downloads/2015.06.25/youtube-dl -O system/skeleton/usr/bin/youtube-dl.py.zip
     $ chmod a+rx system/skeleton/usr/bin/youtube-dl.py.zip
 
@@ -253,7 +255,7 @@ For fastboot see appended instructions: "Debug Monitor serial console instructio
  - BUILD & INSTALL A NEW KERNEL
    ###CPU_COUNT=$(grep processor /proc/cpuinfo | awk '{count=$NF};END{print count+1}')
    ###export ARCH=arm
-   ###export CROSS_COMPILE=~/xu3_mplayer/gcc-linaro-4.9-2015.02-3-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf-
+   ###export CROSS_COMPILE=~/xu3_mplayer/linaro-4.9/arm-linux-gnueabihf-
    ###sudo mount [ [$DEV_SD'1'] OR [-o loop /tmp/VFS_BOOT.img] ] /tmp/ODROID_BOOT
    ###sudo mount [ [$DEV_SD'2'] OR [-o loop /tmp/VFS_ROOT.img] ] /tmp/ODROID_ROOT
    ###cd ~/xu3_mplayer
@@ -272,7 +274,7 @@ For fastboot see appended instructions: "Debug Monitor serial console instructio
     - Copy the kernel, modules, firmware, and boot.ini to the boot filesystem. Initrd is not used.
        $ sudo cp arch/arm/boot/zImage /tmp/ODROID_BOOT/
        $ sudo cp arch/arm/boot/dts/exynos5422-odroidxu3.dtb /tmp/ODROID_BOOT/
-       $ sudo make ARCH=arm CROSS_COMPILE=~/xu3_mplayer/gcc-linaro-4.9-2015.02-3-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf- INSTALL_MOD_PATH=/tmp/ODROID_ROOT modules_install
+       $ sudo make ARCH=arm CROSS_COMPILE=~/xu3_mplayer/linaro-4.9/arm-linux-gnueabihf- INSTALL_MOD_PATH=/tmp/ODROID_ROOT modules_install
        $ sudo nano -w /tmp/ODROID_BOOT/boot.ini
          ODROIDXU-UBOOT-CONFIG
          setenv bootdelay "10"
@@ -368,7 +370,7 @@ ___________________________________________________
 ___________________________________________________
 Thanks to Legath on the Odroid forum for help with this .mk and thanks to mihailescu2m
 for providing the fastest armsoc driver I've tested, comparing glxgears framerate.
-Other libs & drivers for es2gears_x11/wayland still need config/built/installed.
+Other libs & drivers for es2gears_x11/wayland still need config/built/installed/tested.
 ###cd ~/xu3_mplayer/buildroot-2015.05
 
  ! NOTICE: several versions of this driver code are currently being developed.
@@ -386,7 +388,7 @@ Other libs & drivers for es2gears_x11/wayland still need config/built/installed.
        $ make -j4
 
        $ nano -w package/x11r7/xdriver_xf86-video-armsoc/xdriver_xf86-video-armsoc.mk
-         Copy/Paste the following  as-is, keeping the tabs.
+       # Copy/Paste the following  as-is, keeping the tabs.
 
 ################################################################################
 #
@@ -648,7 +650,7 @@ To speed up fastboot's flash apply "Patch u-boot" below to skip the partition er
     $ cd ~/xu3_mplayer/buildroot-2015.05
     $ sudo tar -xvf output/images/rootfs.tar -C /mnt ; sudo sync ; ls -alsh /tmp/VFS_ROOT.img
     $ cd ~/xu3_mplayer/linux
-    $ sudo make ARCH=arm CROSS_COMPILE=~/xu3_mplayer/gcc-linaro-4.9-2015.02-3-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf- INSTALL_MOD_PATH=/mnt modules_install
+    $ sudo make ARCH=arm CROSS_COMPILE=~/xu3_mplayer/linaro-4.9/arm-linux-gnueabihf- INSTALL_MOD_PATH=/mnt modules_install
     $ sudo umount /mnt ; ls -alsh /tmp/VFS_ROOT.img
     $ cd ~/xu3_mplayer
     $ img2simg /tmp/VFS_ROOT.img /tmp/VFS_ROOT.simg ; ls -alsh /tmp/VFS_ROOT.*
