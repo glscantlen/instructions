@@ -41,8 +41,8 @@ For fastboot see appended instructions: "Debug Monitor serial console instructio
     $ sudo apt-get install git ccache xz-utils #NA g++-arm-linux-gnueabihf p7zip-full 
     $ wget http://releases.linaro.org/15.02/components/toolchain/binaries/arm-linux-gnueabihf/gcc-linaro-4.9-2015.02-3-x86_64_arm-linux-gnueabihf.tar.xz
     $ tar -xvJf gcc-linaro-4.9-2015.02-3-x86_64_arm-linux-gnueabihf.tar.xz
-    $ ln -s gcc-linaro-4.9-2015.02-3-x86_64_arm-linux-gnueabihf/bin linaro-4.9
-    $ export CROSS_COMPILE=~/xu3_mplayer/linaro-4.9/arm-linux-gnueabihf-
+    $ ln -s gcc-linaro-4.9-2015.02-3-x86_64_arm-linux-gnueabihf linaro-4.9
+    $ export CROSS_COMPILE=~/xu3_mplayer/linaro-4.9/bin/arm-linux-gnueabihf-
     $ ls $CROSS_COMPILE*
     $ export ARCH=arm
     $ CPU_COUNT=$(grep processor /proc/cpuinfo | awk '{count=$NF};END{print count+1}')
@@ -76,7 +76,7 @@ For fastboot see appended instructions: "Debug Monitor serial console instructio
     ? ELSE you can build and install a custom u-boot on the microSD
       and you may use fastboot to remotely flash partitions onto the Odroid:
       ###CPU_COUNT=$(grep processor /proc/cpuinfo | awk '{count=$NF};END{print count+1}')
-      ###export CROSS_COMPILE=~/xu3_mplayer/linaro-4.9/arm-linux-gnueabihf-
+      ###export CROSS_COMPILE=~/xu3_mplayer/linaro-4.9/bin/arm-linux-gnueabihf-
 
        ! Modify fastboot for faster flashing. Skip erasing the partitions.
        $ gedit common/cmd_fastboot.c # see appended "Patch u-boot" below.
@@ -255,7 +255,7 @@ For fastboot see appended instructions: "Debug Monitor serial console instructio
  - BUILD & INSTALL A NEW KERNEL
    ###CPU_COUNT=$(grep processor /proc/cpuinfo | awk '{count=$NF};END{print count+1}')
    ###export ARCH=arm
-   ###export CROSS_COMPILE=~/xu3_mplayer/linaro-4.9/arm-linux-gnueabihf-
+   ###export CROSS_COMPILE=~/xu3_mplayer/linaro-4.9/bin/arm-linux-gnueabihf-
    ###sudo mount [ [$DEV_SD'1'] OR [-o loop /tmp/VFS_BOOT.img] ] /tmp/ODROID_BOOT
    ###sudo mount [ [$DEV_SD'2'] OR [-o loop /tmp/VFS_ROOT.img] ] /tmp/ODROID_ROOT
    ###cd ~/xu3_mplayer
@@ -274,7 +274,7 @@ For fastboot see appended instructions: "Debug Monitor serial console instructio
     - Copy the kernel, modules, firmware, and boot.ini to the boot filesystem. Initrd is not used.
        $ sudo cp arch/arm/boot/zImage /tmp/ODROID_BOOT/
        $ sudo cp arch/arm/boot/dts/exynos5422-odroidxu3.dtb /tmp/ODROID_BOOT/
-       $ sudo make ARCH=arm CROSS_COMPILE=~/xu3_mplayer/linaro-4.9/arm-linux-gnueabihf- INSTALL_MOD_PATH=/tmp/ODROID_ROOT modules_install
+       $ sudo make ARCH=arm CROSS_COMPILE=~/xu3_mplayer/linaro-4.9/bin/arm-linux-gnueabihf- INSTALL_MOD_PATH=/tmp/ODROID_ROOT modules_install
        $ sudo nano -w /tmp/ODROID_BOOT/boot.ini
          ODROIDXU-UBOOT-CONFIG
          setenv bootdelay "10"
@@ -620,8 +620,8 @@ To speed up fastboot's flash apply "Patch u-boot" below to skip the partition er
    previously built using instructions above. You will also need to provide
    the partition sizes of the remote microSD.
    See the "fdisk -p 0" from above. Use block count * 512
-    $ SIZEOF_DEV_SD1=134742016   #=$(expr   263168 \* 512)
-    $ SIZEOF_DEV_SD2=15794700288 #=$(expr 30849024 \* 512) 16G microSD
+    $ SIZEOF_DEV_SD1=$(expr   263168 \* 512)#=134742016   #
+    $ SIZEOF_DEV_SD2=$(expr 30849024 \* 512)#=15794700288 # 16G microSD
 
  - Buildroot boot image
     $ rm /tmp/VFS_BOOT.img
@@ -650,7 +650,7 @@ To speed up fastboot's flash apply "Patch u-boot" below to skip the partition er
     $ cd ~/xu3_mplayer/buildroot-2015.05
     $ sudo tar -xvf output/images/rootfs.tar -C /mnt ; sudo sync ; ls -alsh /tmp/VFS_ROOT.img
     $ cd ~/xu3_mplayer/linux
-    $ sudo make ARCH=arm CROSS_COMPILE=~/xu3_mplayer/linaro-4.9/arm-linux-gnueabihf- INSTALL_MOD_PATH=/mnt modules_install
+    $ sudo make ARCH=arm CROSS_COMPILE=~/xu3_mplayer/linaro-4.9/bin/arm-linux-gnueabihf- INSTALL_MOD_PATH=/mnt modules_install
     $ sudo umount /mnt ; ls -alsh /tmp/VFS_ROOT.img
     $ cd ~/xu3_mplayer
     $ img2simg /tmp/VFS_ROOT.img /tmp/VFS_ROOT.simg ; ls -alsh /tmp/VFS_ROOT.*
