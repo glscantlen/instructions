@@ -38,7 +38,9 @@ For fastboot see appended instructions: "Debug Monitor serial console instructio
 
    ___________________________________________
  - Install the Development environment
-    $ sudo apt-get install git ccache xz-utils #NA g++-arm-linux-gnueabihf p7zip-full 
+    $ sudo apt-get install build-essential git ccache xz-utils openssh-server #NA g++-arm-linux-gnueabihf p7zip-full gawk
+    ! !!!! BUG-HACK FOR BUILDROOT's mplayer. Their make-magic is broken. Configure is getting the Xorg development files from the HOST !!!!
+       $ sudo apt-get install xorg-dev
     $ wget http://releases.linaro.org/15.02/components/toolchain/binaries/arm-linux-gnueabihf/gcc-linaro-4.9-2015.02-3-x86_64_arm-linux-gnueabihf.tar.xz
     $ tar -xvJf gcc-linaro-4.9-2015.02-3-x86_64_arm-linux-gnueabihf.tar.xz
     $ ln -s gcc-linaro-4.9-2015.02-3-x86_64_arm-linux-gnueabihf linaro-4.9
@@ -79,7 +81,7 @@ For fastboot see appended instructions: "Debug Monitor serial console instructio
       ###export CROSS_COMPILE=~/xu3_mplayer/linaro-4.9/bin/arm-linux-gnueabihf-
 
        ! Modify fastboot for faster flashing. Skip erasing the partitions.
-       $ gedit common/cmd_fastboot.c # see appended "Patch u-boot" below.
+       $ nano -w common/cmd_fastboot.c # see appended "Patch u-boot" below.
          @ ~line 593 of cmd_fastboot.c modify as follows:
             if (0)/*(bl_cnt>>10)*/
 
@@ -87,12 +89,26 @@ For fastboot see appended instructions: "Debug Monitor serial console instructio
        $ make odroid_config
        $ make -j$CPU_COUNT
 
-       - Install u-boot to microSD in non-tabled-partitions and erase u-boot evironment
+       - Install u-boot to microSD in non-tabled-partitions. Evironment was erased with previous wipe
           $ sudo dd seek=1     of=$DEV_SD  if=sd_fuse/hardkernel/bl1.bin.hardkernel
           $ sudo dd seek=31    of=$DEV_SD  if=sd_fuse/hardkernel/bl2.bin.hardkernel
           $ sudo dd seek=63    of=$DEV_SD  if=u-boot.bin
           $ sudo dd seek=719   of=$DEV_SD  if=sd_fuse/hardkernel/tzsw.bin.hardkernel
          ###sudo dd seek=1231  of=$DEV_SD  if=/dev/zero count=32     conv=noerror,sync # zero out any environment
+
+       # Fastboot requires access to the Odroid as a USB device at its micro USB port.
+         Utilities required by fastboot are provided in these 2 Android packages.
+       $ sudo apt-get install android-tools-fastboot android-tools-fsutils
+       ? IF you want non-sudo access to the Odroid fastboot device
+         then add it's USB product/vendor IDs to the udev rules.
+          $ grep -E "define VENDOR|define PRODUCT" drivers/usb/gadget/fastboot.c
+          $ sudo nano /lib/udev/rules.d/70-android-tools-fastboot.rules
+            ACTION=="add|change", SUBSYSTEM=="usb", \
+              ATTRS{idVendor}=="18d1", ATTRS{idProduct}=="4e30|4e40|4ee0|0002", \
+              TAG+="uaccess"
+          $ sudo udevadm control --reload-rules
+          $ sudo udevadm trigger
+       ? ELSE you will need sudo privliges to execute fastboot commands
 
     $ sudo sync
     $ cd ~/xu3_mplayer
@@ -143,8 +159,7 @@ For fastboot see appended instructions: "Debug Monitor serial console instructio
        $ sudo mount -t vfat -o loop /tmp/VFS_BOOT.img /tmp/ODROID_BOOT
        $ sudo mount -t ext4 -o loop /tmp/VFS_ROOT.img /tmp/ODROID_ROOT
 
-
-   _______________________________________________
+  _______________________________________________
  - Build and install the BuildRoot system
    ###REPO_URL_PATH="https://github.com/glscantlen/instructions/raw/master/Buildroot_XU3_MPlayer"
    ###CPU_COUNT=$(grep processor /proc/cpuinfo | awk '{count=$NF};END{print count+1}')
@@ -190,8 +205,8 @@ For fastboot see appended instructions: "Debug Monitor serial console instructio
     ? ELSE you can copy the pre-made configuration from this repository folder.
       ###cp ~/instructions/Buildroot_XU3_MPlayer/odroidxu3_mplayer_defconfig configs/
        $ wget $REPO_URL_PATH/odroidxu3_mplayer_defconfig -O configs/odroidxu3_mplayer_defconfig
-       $ ls $HOME/xu3_mplayer/linaro-4.9
        $ make odroidxu3_mplayer_defconfig
+       $ ls $HOME/xu3_mplayer/linaro-4.9
 
     - Install youtube-dl
     $ wget http://yt-dl.org/downloads/2015.06.25/youtube-dl -O system/skeleton/usr/bin/youtube-dl.py.zip
@@ -211,31 +226,12 @@ For fastboot see appended instructions: "Debug Monitor serial console instructio
       /dev/mmcblk0p2  /               ext4    rw,noauto       0       1
       ...
 
-    - configure Xorg
+    - Configure Xorg
     $ mkdir system/skeleton/etc/X11
-    $ nano -w system/skeleton/etc/X11/xorg.conf
-      Section     "Device"
-       Identifier  "Mali-Fbdev"
-       Driver      "armsoc"
-       Option      "fbdev"        "/dev/fb0"
-       Option      "Debug"        "false"
-       Option      "DPMS"         "false"
-      EndSection
-      Section        "Screen"
-       Identifier     "Default Screen"
-       Device         "Mali-Fbdev"
-       DefaultDepth   24
-      EndSection
-      Section      "ServerLayout"
-       Identifier   "Default Layout"
-       Option       "BlankTime"        "0"
-       Option       "StandbyTime"      "0"
-       Option       "SuspendTime"      "0"
-       Option       "OffTime"          "0"
-      EndSection
-      Section      "DRI"
-       Mode         0666
-      EndSection
+    ? IF you do not have access to REPO_URL_PATH or you want to enter the Xorg
+      configuration manually. Use the appended instructions: "Edit Xorg configuration"
+    ? ELSE you can download a pre-written xorg.conf
+       $ wget $REPO_URL_PATH/xorg.conf -O system/skeleton/etc/X11/xorg.conf
 
     $ nano -w support/scripts/config_eth
       echo "auto eth0" >> output/target/etc/network/interfaces
@@ -252,7 +248,7 @@ For fastboot see appended instructions: "Debug Monitor serial console instructio
 
 
    __________________________________
- - BUILD & INSTALL A NEW KERNEL
+ - BUILD & INSTALL A KERNEL
    ###CPU_COUNT=$(grep processor /proc/cpuinfo | awk '{count=$NF};END{print count+1}')
    ###export ARCH=arm
    ###export CROSS_COMPILE=~/xu3_mplayer/linaro-4.9/bin/arm-linux-gnueabihf-
@@ -271,13 +267,17 @@ For fastboot see appended instructions: "Debug Monitor serial console instructio
        $ make dtbs
        $ KRELEASE=$(make kernelrelease)
 
-    - Copy the kernel, modules, firmware, and boot.ini to the boot filesystem. Initrd is not used.
+    - Install the kernel, modules, and firmware into the boot filesystem. Initrd is not used.
        $ sudo cp arch/arm/boot/zImage /tmp/ODROID_BOOT/
        $ sudo cp arch/arm/boot/dts/exynos5422-odroidxu3.dtb /tmp/ODROID_BOOT/
        $ sudo make ARCH=arm CROSS_COMPILE=~/xu3_mplayer/linaro-4.9/bin/arm-linux-gnueabihf- INSTALL_MOD_PATH=/tmp/ODROID_ROOT modules_install
+
+    ? IF you want to download a pre-written boot.ini
+       $ wget $REPO_URL_PATH/boot.ini -O /tmp/ODROID_BOOT/boot.ini
+    ? ELSE you can edit this boot.ini
        $ sudo nano -w /tmp/ODROID_BOOT/boot.ini
          ODROIDXU-UBOOT-CONFIG
-         setenv bootdelay "10"
+         #setenv bootdelay "10"
          setenv fdt_high "0xffffffff"
          setenv smsmacaddr "smsc95xx.macaddr=00:1e:06:61:7a:39"
          setenv bootrootfs "console=tty1 console=ttySAC2,115200n8 root=UUID=e139ce78-9841-40fe-8823-96a304a09859 rootwait ro"
@@ -306,22 +306,20 @@ For fastboot see appended instructions: "Debug Monitor serial console instructio
     ? ELSE you are installing Buildroot remotely with fastboot
       ###sudo apt-get install android-tools-fastboot android-tools-fsutils
        - Start fastboot on the odroid:
-         If Buildroot or Ubuntu is already installed you may need a bootdelay as in
-         the boot.ini above, then interupt the bootloader before the kernal loads.
           - connect the OdroidXU3 to the development system with
             a microUSB cable and the Debug console cable
           - Open a new terminal for the Debug console and execute miniterm.
-             $ miniterm.py --lf /dev/ttyUSB0 -b 115200
+             $ sudo miniterm.py --lf /dev/ttyUSB0 -b 115200
           - Continuing in the Debug Console terminal, insert microSD into OdroidXU3.
             Apply power and hold down the space bar, interupting the bootloader.
           - At the bootloader prompt, "Exynos5422 #", enter "fastboot"
           ! Now continue on the original desktop terminal
 
-       - convert filesystem to sparse image and install remotely
+       - convert root filesystem to sparse image and remotely install
           $ img2simg /tmp/VFS_ROOT.img /tmp/VFS_ROOT.simg ; ls -alsh /tmp/VFS_ROOT*
-          $ fastboot flash fat /tmp/VFS_BOOT.img
-          $ fastboot flash system /tmp/VFS_ROOT.simg
-          $ fastboot reboot
+          $ sudo fastboot flash system /tmp/VFS_ROOT.simg
+          $ sudo fastboot flash fat /tmp/VFS_BOOT.img
+          $ sudo fastboot reboot
 
     ! NOTICE: under some conditions the Odroid will need startup with the POWER button.
 
@@ -338,7 +336,7 @@ For fastboot see appended instructions: "Debug Monitor serial console instructio
        > glxgears
        > es2gears_x11
 
-       ! HINT: you can open a second Xtrem window, display this document, and use copy/paste
+       ! HINT: you can open a second Xterm window, display this document, and use copy/paste
           > ssh <USER>@<IPADDR>
           > cat instructions/Buildroot_XU3_MPlayer/build_xu3_mplayer.ins
           - use shift-insert to paste selected text into the first Xterm window.
@@ -387,8 +385,8 @@ Other libs & drivers for es2gears_x11/wayland still need config/built/installed/
        $ ls -als output/images
        $ make -j4
 
-       $ nano -w package/x11r7/xdriver_xf86-video-armsoc/xdriver_xf86-video-armsoc.mk
-       # Copy/Paste the following  as-is, keeping the tabs.
+ $ nano -w package/x11r7/xdriver_xf86-video-armsoc/xdriver_xf86-video-armsoc.mk
+ # Copy/Paste the following  as-is, keeping the tabs.
 
 ################################################################################
 #
@@ -396,29 +394,62 @@ Other libs & drivers for es2gears_x11/wayland still need config/built/installed/
 #
 ################################################################################
 
-XDRIVER_XF86_VIDEO_ARMSOC_VERSION = 13a46a857369cf3627cf6d4d6f04e5420341cde3
-XDRIVER_XF86_VIDEO_ARMSOC_SITE = $(call github,mihailescu2m,xf86-video-armsoc,$(XDRIVER_XF86_VIDEO_ARMSOC_VERSION))
 #XDRIVER_XF86_VIDEO_ARMSOC_VERSION = 1.0.0
 #XDRIVER_XF86_VIDEO_ARMSOC_SITE = $(call github,endlessm,xf86-video-armsoc,$(XDRIVER_XF86_VIDEO_ARMSOC_VERSION))
 #XDRIVER_XF86_VIDEO_ARMSOC_VERSION = 1.3.0
 #XDRIVER_XF86_VIDEO_ARMSOC_SITE = git://anongit.freedesktop.org/xorg/driver/xf86-video-armsoc
+XDRIVER_XF86_VIDEO_ARMSOC_VERSION = 13a46a857369cf3627cf6d4d6f04e5420341cde3
+XDRIVER_XF86_VIDEO_ARMSOC_SITE = $(call github,mihailescu2m,xf86-video-armsoc,$(XDRIVER_XF86_VIDEO_ARMSOC_VERSION))
 XDRIVER_XF86_VIDEO_ARMSOC_AUTORECONF = YES
 XDRIVER_XF86_VIDEO_ARMSOC_DEPENDENCIES = xserver_xorg-server xproto_fontsproto xproto_randrproto xproto_renderproto xproto_xextproto xproto_xproto
 XDRIVER_XF86_VIDEO_ARMSOC_CONF_OPTS = --with-drmmode=exynos --enable-maintainer-mode
 
-define M4MKDIR_HOOK
-	-mkdir $(@D)/m4;
-endef
-XDRIVER_XF86_VIDEO_ARMSOC_PRE_CONFIGURE_HOOKS += M4MKDIR_HOOK
-
 define XDRIVER_XF86_VIDEO_ARMSOC_AUTOGEN_HOOK
+	mkdir -p $(@D)/m4
 	mkdir -p $(@D)/config
 	touch $(@D)/AUTHORS
 endef
+
 XDRIVER_XF86_VIDEO_ARMSOC_PRE_CONFIGURE_HOOKS += XDRIVER_XF86_VIDEO_ARMSOC_AUTOGEN_HOOK
 
 $(eval $(autotools-package))
 
+
+
+
+
+
+________________________
+
+Edit Xorg configuration
+________________________
+ $ nano -w system/skeleton/etc/X11/xorg.conf
+
+Section     "Device"
+   Identifier  "Mali-Fbdev"
+   Driver      "armsoc"
+   Option      "fbdev"        "/dev/fb0"
+   Option      "Debug"        "false"
+   Option      "DPMS"         "false"
+EndSection
+
+Section        "Screen"
+   Identifier     "Default Screen"
+   Device         "Mali-Fbdev"
+   DefaultDepth   24
+EndSection
+
+Section      "ServerLayout"
+   Identifier   "Default Layout"
+   Option       "BlankTime"        "0"
+   Option       "StandbyTime"      "0"
+   Option       "SuspendTime"      "0"
+   Option       "OffTime"          "0"
+EndSection
+
+Section      "DRI"
+   Mode         0666
+EndSection
 
 
 
@@ -463,7 +494,7 @@ _________________________________
                                                                     [*] xf86-video-armsoc
                                                                     [*] xf86-video-fbdev
                                                               ##### [ ] xf86-video-vesa
-                                                         protocl -> [*] dri2proto
+                                                         X proto -> [*] dri2proto
 
                                             [*] mesa3d -> [ ] Gallium swrast 
                                                           [*] DRI swrast driver
@@ -473,16 +504,16 @@ _________________________________
                                             [*] mesa3d-demos #requires (AI)GLX/GLU/GLEW
                                             [*] xterm
 
+                     Audio and video apps  -> [*] alsa-utils -> [*] speaker-test
+                                              [*] ffmpeg
+                                              [*] mplayer
+
                      Libraries -> Graphics -> [*] Libdrm
                                         ##### DRM Drivers -> [*] exynos (get latest non-exp)
                                               [*] Libdri2
                                               [*] Libglew
                                               [*] Libglu
                                         ##### [*] Wayland
-
-                     Audio and video apps  -> [*] alsa-utils -> [*] speaker-test
-                                              [*] ffmpeg
-                                              [*] mplayer
 
                      Networking apps -> [*] openssh
                                         [*] rsync 
@@ -562,6 +593,8 @@ http://www.hardkernel.com/main/products/prdt_info.php?g_code=G134111883934
 
 
 
+
+
 ______________________________________
 
 Patch u-boot / fastboot; no erase when flash partition
@@ -583,14 +616,13 @@ ______________________________________
 
 
 
-
 ________________________________________________
 
 Install Buildroot Remotely with Fastboot / Android tools (condensed version)
 ________________________________________________
 Requires Odroid bootloader and Samsung firmware load, fwbl1 / bl2
 See instructions above for Installing u-boot and Partitioning microSD.
-To speed up fastboot's flash apply "Patch u-boot" below to skip the partition erase.
+To speed up fastboot's flash apply "Patch u-boot" above to skip the partition erase.
 ###sudo apt-get install android-tools-fastboot android-tools-fsutils
 
  - Start fastboot on the odroid:
@@ -600,8 +632,8 @@ To speed up fastboot's flash apply "Patch u-boot" below to skip the partition er
        $ sudo miniterm.py --lf /dev/ttyUSB0 -b 115200
     - Continuing in the Debug Console terminal, insert microSD into OdroidXU3.
       Apply power and hold down the space bar, interrupting the bootloader.
-    - At the bootloader prompt, "Exynos5422 #", enter "fdisk -p 0". These
-      partition sizes will be needed later. (fastboot getvar all: not suported)
+    - At the bootloader prompt, "Exynos5422 #", enter "fdisk -p 0".
+      These partition sizes will be needed later.
     - now enter "fastboot" and continue on the original desktop terminal
 
  ? IF you want to re-Flash the bootloader(s):
@@ -611,17 +643,17 @@ To speed up fastboot's flash apply "Patch u-boot" below to skip the partition er
    If you reboot with corrupt bootloaders you'll need to remove the
    microSD from the Odroid and use instructions above for Installing u-boot
     $ cd ~/xu3_mplayer/u-boot
-    $ fastboot flash fwbl1       sd_fuse/hardkernel/bl1.bin.hardkernel
-    $ fastboot flash bl2         sd_fuse/hardkernel/bl2.bin.hardkernel
-    $ fastboot flash bootloader  u-boot.bin
-    $ fastboot flash tzsw        sd_fuse/hardkernel/tzsw.bin.hardkernel
+    $ sudo fastboot flash fwbl1       sd_fuse/hardkernel/bl1.bin.hardkernel
+    $ sudo fastboot flash bl2         sd_fuse/hardkernel/bl2.bin.hardkernel
+    $ sudo fastboot flash bootloader  u-boot.bin
+    $ sudo fastboot flash tzsw        sd_fuse/hardkernel/tzsw.bin.hardkernel
 
  - Flash Buildroot's root and boot partitions. Assuming they have been
    previously built using instructions above. You will also need to provide
    the partition sizes of the remote microSD.
    See the "fdisk -p 0" from above. Use block count * 512
-    $ SIZEOF_DEV_SD1=$(expr   263168 \* 512)#=134742016   #
-    $ SIZEOF_DEV_SD2=$(expr 30849024 \* 512)#=15794700288 # 16G microSD
+    $ SIZEOF_DEV_SD1=$(expr   263168 \* 512) #=134742016   #
+    $ SIZEOF_DEV_SD2=$(expr 30849024 \* 512) #=15794700288 # 16G microSD
 
  - Buildroot boot image
     $ rm /tmp/VFS_BOOT.img
@@ -634,10 +666,9 @@ To speed up fastboot's flash apply "Patch u-boot" below to skip the partition er
     $ echo "Installing kernel release "$KVERSION
     $ sudo cp arch/arm/boot/zImage /mnt ;sudo sync ; ls -alsh /tmp/VFS_BOOT.img
     $ sudo cp arch/arm/boot/dts/exynos5422-odroidxu3.dtb /mnt ;sudo sync ; ls -alsh /tmp/VFS_BOOT.img
-    $ sudo nano -w /mnt/boot.ini ; ls -alsh /tmp/VFS_BOOT.img
-      verify/copy the boot.ini from above
+    $ wget $REPO_URL_PATH/boot.ini -O /mnt/boot.ini
     $ sudo umount /mnt ; ls -alsh /tmp/VFS_BOOT.img
-    $ fastboot flash fat /tmp/VFS_BOOT.img
+    $ sudo fastboot flash fat /tmp/VFS_BOOT.img
 
  - Buildroot root image
     $ rm /tmp/VFS_ROOT.img
@@ -654,9 +685,9 @@ To speed up fastboot's flash apply "Patch u-boot" below to skip the partition er
     $ sudo umount /mnt ; ls -alsh /tmp/VFS_ROOT.img
     $ cd ~/xu3_mplayer
     $ img2simg /tmp/VFS_ROOT.img /tmp/VFS_ROOT.simg ; ls -alsh /tmp/VFS_ROOT.*
-    $ fastboot flash system /tmp/VFS_ROOT.simg
+    $ sudo fastboot flash system /tmp/VFS_ROOT.simg
 
- $ fastboot reboot
+ $ sudo fastboot reboot
  ! DO NOT "fastboot flash" boot, kernel, ramdisk, userdata, or cache. These
    images are specific to Android and may over-write Buildroot partitions.
 
