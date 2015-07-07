@@ -38,8 +38,10 @@ For fastboot see appended instructions: "Debug Monitor serial console instructio
 
    ___________________________________________
  - Install the Development environment
-    $ sudo apt-get install build-essential git ccache xz-utils openssh-server #NA g++-arm-linux-gnueabihf p7zip-full gawk
-    ! !!!! BUG-HACK FOR BUILDROOT's mplayer. Their make-magic is broken. Configure is getting the Xorg development files from the HOST !!!!
+   ###sudo apt-get install g++-arm-linux-gnueabihf p7zip-full gawk
+    $ sudo apt-get install build-essential git ccache xz-utils openssh-server
+    ! !!!! BUG-HACK FOR BUILDROOT's mplayer. Their make-magic is broken.
+      Configure is getting the Xorg development files from the HOST !!!!
        $ sudo apt-get install xorg-dev
     $ wget http://releases.linaro.org/15.02/components/toolchain/binaries/arm-linux-gnueabihf/gcc-linaro-4.9-2015.02-3-x86_64_arm-linux-gnueabihf.tar.xz
     $ tar -xvJf gcc-linaro-4.9-2015.02-3-x86_64_arm-linux-gnueabihf.tar.xz
@@ -80,10 +82,12 @@ For fastboot see appended instructions: "Debug Monitor serial console instructio
       ###CPU_COUNT=$(grep processor /proc/cpuinfo | awk '{count=$NF};END{print count+1}')
       ###export CROSS_COMPILE=~/xu3_mplayer/linaro-4.9/bin/arm-linux-gnueabihf-
 
-       ! Modify fastboot for faster flashing. Skip erasing the partitions.
-       $ nano -w common/cmd_fastboot.c # see appended "Patch u-boot" below.
-         @ ~line 593 of cmd_fastboot.c modify as follows:
+       # For a faster flash with fastboot, skip erasing the partitions.
+         Modify cmd_fastboot.c at ~line 593. See appendex "Patch u-boot"
+       $ nano -w common/cmd_fastboot.c
+         ...
             if (0)/*(bl_cnt>>10)*/
+         ...
 
        $ grep -E "Target|odroid" boards.cfg
        $ make odroid_config
@@ -99,7 +103,8 @@ For fastboot see appended instructions: "Debug Monitor serial console instructio
        # Fastboot requires access to the Odroid as a USB device at its micro USB port.
          Utilities required by fastboot are provided in these 2 Android packages.
        $ sudo apt-get install android-tools-fastboot android-tools-fsutils
-       ? IF you want non-sudo access to the Odroid fastboot device
+
+       ? IF you want to allow non-sudo access to the Odroid fastboot device
          then add it's USB product/vendor IDs to the udev rules.
           $ grep -E "define VENDOR|define PRODUCT" drivers/usb/gadget/fastboot.c
           $ sudo nano /lib/udev/rules.d/70-android-tools-fastboot.rules
@@ -195,33 +200,31 @@ For fastboot see appended instructions: "Debug Monitor serial console instructio
          <TAB>  Odroid XU3 video driver
 
        - Create a '.mk' file for download and build of the armsoc driver code
-       ? Use the appended instructions below "Create ARMSOC xdriver_xf86-video-armsoc.mk"
-       ? or copy the pre-written .mk file from "instructions/Buildroot_XU3_MPlayer"
-         ###cp ~/instructions/Buildroot_XU3_MPlayer/xdriver_xf86-video-armsoc.mk package/x11r7/xdriver_xf86-video-armsoc/
+       ? IF you do not have access to REPO_URL_PATH then use the
+         appended instructions below "Create ARMSOC xdriver_xf86-video-armsoc.mk"
+       ? ELSE you can copy the pre-written .mk file from "instructions/Buildroot_XU3_MPlayer"
           $ wget $REPO_URL_PATH/xdriver_xf86-video-armsoc.mk -O package/x11r7/xdriver_xf86-video-armsoc/xdriver_xf86-video-armsoc.mk
 
-    ? IF you want to configure BuildRoot manully using "make menuconfig", use
-      the appended instructions below "BuildRoot Menuconfig from scratch"
+    ? IF you do not have access to REPO_URL_PATH or you just want to configure BuildRoot manully
+      using "make menuconfig", see appended instructions below "BuildRoot Menuconfig from scratch"
     ? ELSE you can copy the pre-made configuration from this repository folder.
-      ###cp ~/instructions/Buildroot_XU3_MPlayer/odroidxu3_mplayer_defconfig configs/
        $ wget $REPO_URL_PATH/odroidxu3_mplayer_defconfig -O configs/odroidxu3_mplayer_defconfig
        $ make odroidxu3_mplayer_defconfig
-       $ ls $HOME/xu3_mplayer/linaro-4.9
+       $ ls $HOME/xu3_mplayer/linaro-4.9/bin
 
     - Install youtube-dl
     $ wget http://yt-dl.org/downloads/2015.06.25/youtube-dl -O system/skeleton/usr/bin/youtube-dl.py.zip
     $ chmod a+rx system/skeleton/usr/bin/youtube-dl.py.zip
 
-    - configure #of ctrl-alt-F terminals
+    # Add #of ctrl-alt-F terminals before the getty serial port
     $ nano -w system/skeleton/etc/inittab
       ...
-      #add a few virtual consoles before the GENERIC_SERIAL
       tty1::respawn:/sbin/getty 38400 tty1
       tty2::respawn:/sbin/getty 38400 tty2
       ...
 
     - configure root mount to microSD partition #2
-    $ nano -w system/skeleton/etc/fstab # change the root dev to actual
+    $ nano -w system/skeleton/etc/fstab # change the root dev to real device
       #/dev/root      /               ext2    rw,noauto       0       1
       /dev/mmcblk0p2  /               ext4    rw,noauto       0       1
       ...
@@ -265,7 +268,7 @@ For fastboot see appended instructions: "Debug Monitor serial console instructio
        $ make -j$CPU_COUNT zImage
        $ make -j$CPU_COUNT modules
        $ make dtbs
-       $ KRELEASE=$(make kernelrelease)
+      ###KRELEASE=$(make kernelrelease)
 
     - Install the kernel, modules, and firmware into the boot filesystem. Initrd is not used.
        $ sudo cp arch/arm/boot/zImage /tmp/ODROID_BOOT/
@@ -274,10 +277,10 @@ For fastboot see appended instructions: "Debug Monitor serial console instructio
 
     ? IF you want to download a pre-written boot.ini
        $ wget $REPO_URL_PATH/boot.ini -O /tmp/ODROID_BOOT/boot.ini
-    ? ELSE you can edit this boot.ini
+    ? ELSE you can edit this into boot.ini
        $ sudo nano -w /tmp/ODROID_BOOT/boot.ini
          ODROIDXU-UBOOT-CONFIG
-         #setenv bootdelay "10"
+         #setenv bootdelay "5"
          setenv fdt_high "0xffffffff"
          setenv smsmacaddr "smsc95xx.macaddr=00:1e:06:61:7a:39"
          setenv bootrootfs "console=tty1 console=ttySAC2,115200n8 root=UUID=e139ce78-9841-40fe-8823-96a304a09859 rootwait ro"
@@ -385,9 +388,8 @@ Other libs & drivers for es2gears_x11/wayland still need config/built/installed/
        $ ls -als output/images
        $ make -j4
 
+ # Copy/Paste the .mk text as-is, keeping the tabs.
  $ nano -w package/x11r7/xdriver_xf86-video-armsoc/xdriver_xf86-video-armsoc.mk
- # Copy/Paste the following  as-is, keeping the tabs.
-
 ################################################################################
 #
 # xdriver_xf86-video-armsoc
@@ -423,6 +425,7 @@ ________________________
 
 Edit Xorg configuration
 ________________________
+###cd ~/xu3_mplayer/buildroot-2015.05
  $ nano -w system/skeleton/etc/X11/xorg.conf
 
 Section     "Device"
@@ -461,7 +464,7 @@ BuildRoot Menuconfig from scratch
 _________________________________
 ###cd ~/xu3_mplayer/buildroot-2015.05
  $ sudo apt-get install ncurses-dev
- $ ls $HOME/xu3_mplayer/linaro-4.9
+ $ ls $HOME/xu3_mplayer/linaro-4.9/bin
  $ make menuconfig # enable buildroot configurations as shown:
 
    Target-options -> (ARM (little endian))
@@ -655,18 +658,18 @@ To speed up fastboot's flash apply "Patch u-boot" above to skip the partition er
     $ SIZEOF_DEV_SD1=$(expr   263168 \* 512) #=134742016   #
     $ SIZEOF_DEV_SD2=$(expr 30849024 \* 512) #=15794700288 # 16G microSD
 
- - Buildroot boot image
+ - Hardkernel boot image
     $ rm /tmp/VFS_BOOT.img
     $ dd if=/dev/zero of=/tmp/VFS_BOOT.img bs=1 count=0 seek=$SIZEOF_DEV_SD1 ; ls -alsh /tmp/VFS_BOOT.img
     $ mkfs.vfat /tmp/VFS_BOOT.img ; ls -alsh /tmp/VFS_BOOT.img
     $ fsck.vfat -fVv /tmp/VFS_BOOT.img # verify fat
     $ sudo mount -o loop /tmp/VFS_BOOT.img /mnt
     $ cd ~/xu3_mplayer/linux
-    $ KVERSION=$(grep -a "Linux version" vmlinux | awk -F " " '{ print $3 }')
-    $ echo "Installing kernel release "$KVERSION
+   ###KVERSION=$(grep -a "Linux version" vmlinux | awk -F " " '{ print $3 }')
+   ###echo "Installing kernel release "$KVERSION
     $ sudo cp arch/arm/boot/zImage /mnt ;sudo sync ; ls -alsh /tmp/VFS_BOOT.img
     $ sudo cp arch/arm/boot/dts/exynos5422-odroidxu3.dtb /mnt ;sudo sync ; ls -alsh /tmp/VFS_BOOT.img
-    $ wget $REPO_URL_PATH/boot.ini -O /mnt/boot.ini
+    $ sudo wget $REPO_URL_PATH/boot.ini -O /mnt/boot.ini
     $ sudo umount /mnt ; ls -alsh /tmp/VFS_BOOT.img
     $ sudo fastboot flash fat /tmp/VFS_BOOT.img
 
