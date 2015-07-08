@@ -29,7 +29,7 @@ For fastboot see appended instructions: "Debug Monitor serial console instructio
    The path name will be something like "/dev/sdX" or "/dev/mmcX"
    Replace "sdX" in the following instructions with correct device name for the microSD.
    !!! CAUTION !!! dd can destroy the contents of your mounted system disk.
-   Make sure /dev/sdX is the correct device for the.
+   Make sure /dev/sdX is the correct device for the microSD.
     $ sudo partprobe
     $ cat /proc/partitions
     $ DEV_SD=/dev/sdX  # !!! make sure this is your microSD
@@ -38,16 +38,17 @@ For fastboot see appended instructions: "Debug Monitor serial console instructio
 
    ___________________________________________
  - Install the Development environment
-   ###sudo apt-get install g++-arm-linux-gnueabihf p7zip-full gawk
     $ sudo apt-get install build-essential git ccache xz-utils openssh-server
     ! !!!! BUG-HACK FOR BUILDROOT's mplayer. Their make-magic is broken.
       Configure is getting the Xorg development files from the HOST !!!!
        $ sudo apt-get install xorg-dev
+
     $ wget http://releases.linaro.org/15.02/components/toolchain/binaries/arm-linux-gnueabihf/gcc-linaro-4.9-2015.02-3-x86_64_arm-linux-gnueabihf.tar.xz
     $ tar -xvJf gcc-linaro-4.9-2015.02-3-x86_64_arm-linux-gnueabihf.tar.xz
     $ ln -s gcc-linaro-4.9-2015.02-3-x86_64_arm-linux-gnueabihf linaro-4.9
     $ export CROSS_COMPILE=~/xu3_mplayer/linaro-4.9/bin/arm-linux-gnueabihf-
     $ ls $CROSS_COMPILE*
+
     $ export ARCH=arm
     $ CPU_COUNT=$(grep processor /proc/cpuinfo | awk '{count=$NF};END{print count+1}')
 
@@ -106,7 +107,7 @@ For fastboot see appended instructions: "Debug Monitor serial console instructio
 
        ? IF you want to allow non-sudo access to the Odroid fastboot device
          then add it's USB product/vendor IDs to the udev rules.
-          $ grep -E "define VENDOR|define PRODUCT" drivers/usb/gadget/fastboot.c
+          $ grep -E "VENDOR_ID|PRODUCT_ID" drivers/usb/gadget/fastboot.c | grep "#define"
           $ sudo nano /lib/udev/rules.d/70-android-tools-fastboot.rules
             ACTION=="add|change", SUBSYSTEM=="usb", \
               ATTRS{idVendor}=="18d1", ATTRS{idProduct}=="4e30|4e40|4ee0|0002", \
@@ -165,7 +166,7 @@ For fastboot see appended instructions: "Debug Monitor serial console instructio
        $ sudo mount -t ext4 -o loop /tmp/VFS_ROOT.img /tmp/ODROID_ROOT
 
   _______________________________________________
- - Build and install the BuildRoot system
+ - Build & Install BuildRoot system
    ###REPO_URL_PATH="https://github.com/glscantlen/instructions/raw/master/Buildroot_XU3_MPlayer"
    ###CPU_COUNT=$(grep processor /proc/cpuinfo | awk '{count=$NF};END{print count+1}')
    ###sudo mount [ [$DEV_SD'2'] OR [-o loop /tmp/VFS_ROOT.img] ] /tmp/ODROID_ROOT
@@ -177,7 +178,7 @@ For fastboot see appended instructions: "Debug Monitor serial console instructio
 
     $ make clean
 
-    - Add "armsoc" video driver config/build to Buildroot's X11 (Kconfig)
+    - Add the new video driver package "armsoc" to Buildroot's X11 (Kconfig)
        # insert a line for the armsoc package into the x11r7/Config.in
          armsoc is added to the "X11R7 Drivers" menu in alphabetic order.
        $ nano -w package/x11r7/Config.in
@@ -188,6 +189,7 @@ For fastboot see appended instructions: "Debug Monitor serial console instructio
          ...
 
        $ mkdir package/x11r7/xdriver_xf86-video-armsoc
+       # Armsoc needs defined and required configurations selected 
        $ nano -w package/x11r7/xdriver_xf86-video-armsoc/Config.in
          config BR2_PACKAGE_XDRIVER_XF86_VIDEO_ARMSOC
          <TAB>bool "xf86-video-armsoc"
@@ -199,9 +201,9 @@ For fastboot see appended instructions: "Debug Monitor serial console instructio
          <TAB>help
          <TAB>  Odroid XU3 video driver
 
-       - Create a '.mk' file for download and build of the armsoc driver code
-       ? IF you do not have access to REPO_URL_PATH then use the
-         appended instructions below "Create ARMSOC xdriver_xf86-video-armsoc.mk"
+       # BuildRoot uses '.mk' files to download, configure and build it's packages.
+       ? IF you do not have access to REPO_URL_PATH then add armsoc's '.mk' file using
+         the appended instructions below "Create ARMSOC xdriver_xf86-video-armsoc.mk"
        ? ELSE you can copy the pre-written .mk file from "instructions/Buildroot_XU3_MPlayer"
           $ wget $REPO_URL_PATH/xdriver_xf86-video-armsoc.mk -O package/x11r7/xdriver_xf86-video-armsoc/xdriver_xf86-video-armsoc.mk
 
@@ -212,24 +214,25 @@ For fastboot see appended instructions: "Debug Monitor serial console instructio
        $ make odroidxu3_mplayer_defconfig
        $ ls $HOME/xu3_mplayer/linaro-4.9/bin
 
-    - Install youtube-dl
+    # Skeleton files and folders will be added to the root filesystem during the build
+      Youtube-dl is a compressed python script used to access Youtube and other's video files
     $ wget http://yt-dl.org/downloads/2015.06.25/youtube-dl -O system/skeleton/usr/bin/youtube-dl.py.zip
     $ chmod a+rx system/skeleton/usr/bin/youtube-dl.py.zip
 
-    # Add #of ctrl-alt-F terminals before the getty serial port
+    # Add a desirable #of ctrl-alt-F terminals before the getty serial port
     $ nano -w system/skeleton/etc/inittab
       ...
       tty1::respawn:/sbin/getty 38400 tty1
       tty2::respawn:/sbin/getty 38400 tty2
       ...
 
-    - configure root mount to microSD partition #2
-    $ nano -w system/skeleton/etc/fstab # change the root dev to real device
+    # THIS iS NOT REQUIRED: configure root mount to ext4 microSD partition #2
+   ###nano -w system/skeleton/etc/fstab # change the root dev to real device
       #/dev/root      /               ext2    rw,noauto       0       1
       /dev/mmcblk0p2  /               ext4    rw,noauto       0       1
       ...
 
-    - Configure Xorg
+    # Xorg is configured to use the new armsoc driver with fbdev /dev/fb0
     $ mkdir system/skeleton/etc/X11
     ? IF you do not have access to REPO_URL_PATH or you want to enter the Xorg
       configuration manually. Use the appended instructions: "Edit Xorg configuration"
@@ -251,7 +254,7 @@ For fastboot see appended instructions: "Debug Monitor serial console instructio
 
 
    __________________________________
- - BUILD & INSTALL A KERNEL
+ - Build & Install a kernel
    ###CPU_COUNT=$(grep processor /proc/cpuinfo | awk '{count=$NF};END{print count+1}')
    ###export ARCH=arm
    ###export CROSS_COMPILE=~/xu3_mplayer/linaro-4.9/bin/arm-linux-gnueabihf-
@@ -270,7 +273,7 @@ For fastboot see appended instructions: "Debug Monitor serial console instructio
        $ make dtbs
       ###KRELEASE=$(make kernelrelease)
 
-    - Install the kernel, modules, and firmware into the boot filesystem. Initrd is not used.
+    - Install the kernel, modules, and firmware into the boot & root filesystems. Initrd is not used.
        $ sudo cp arch/arm/boot/zImage /tmp/ODROID_BOOT/
        $ sudo cp arch/arm/boot/dts/exynos5422-odroidxu3.dtb /tmp/ODROID_BOOT/
        $ sudo make ARCH=arm CROSS_COMPILE=~/xu3_mplayer/linaro-4.9/bin/arm-linux-gnueabihf- INSTALL_MOD_PATH=/tmp/ODROID_ROOT modules_install
@@ -623,9 +626,10 @@ ________________________________________________
 
 Install Buildroot Remotely with Fastboot / Android tools (condensed version)
 ________________________________________________
-Requires Odroid bootloader and Samsung firmware load, fwbl1 / bl2
-See instructions above for Installing u-boot and Partitioning microSD.
-To speed up fastboot's flash apply "Patch u-boot" above to skip the partition erase.
+Requires pre-installed bootloaders, fwbl1, bl2, u-boot.bin, and tzsw.
+See instructions above, "Install bootloaders"
+Requires pre-built Linux kernel and BuildRoot filesystem image.
+See above "Build & Install BuildRoot" and "Build & Install a kernel"
 ###sudo apt-get install android-tools-fastboot android-tools-fsutils
 
  - Start fastboot on the odroid:
