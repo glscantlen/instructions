@@ -405,6 +405,8 @@ Other libs & drivers for es2gears_x11/wayland still need config/built/installed/
 #XDRIVER_XF86_VIDEO_ARMSOC_SITE = git://anongit.freedesktop.org/xorg/driver/xf86-video-armsoc
 XDRIVER_XF86_VIDEO_ARMSOC_VERSION = 13a46a857369cf3627cf6d4d6f04e5420341cde3
 XDRIVER_XF86_VIDEO_ARMSOC_SITE = $(call github,mihailescu2m,xf86-video-armsoc,$(XDRIVER_XF86_VIDEO_ARMSOC_VERSION))
+#XDRIVER_XF86_VIDEO_ARMSOC_VERSION = 5422_r5p1
+#XDRIVER_XF86_VIDEO_ARMSOC_SITE = $(call github,mdrjr,xf86-video-armsoc,$(XDRIVER_XF86_VIDEO_ARMSOC_VERSION))
 XDRIVER_XF86_VIDEO_ARMSOC_AUTORECONF = YES
 XDRIVER_XF86_VIDEO_ARMSOC_DEPENDENCIES = xserver_xorg-server xproto_fontsproto xproto_randrproto xproto_renderproto xproto_xextproto xproto_xproto
 XDRIVER_XF86_VIDEO_ARMSOC_CONF_OPTS = --with-drmmode=exynos --enable-maintainer-mode
