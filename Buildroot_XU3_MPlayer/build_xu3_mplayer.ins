@@ -219,7 +219,7 @@ For fastboot see appended instructions: "Debug Monitor serial console instructio
     $ wget http://yt-dl.org/downloads/2015.06.25/youtube-dl -O system/skeleton/usr/bin/youtube-dl.py.zip
     $ chmod a+rx system/skeleton/usr/bin/youtube-dl.py.zip
 
-    # Add a desirable #of ctrl-alt-F terminals before the getty serial port
+    # Add a desirable #of ctrl-alt-F# terminals before the getty serial port
     $ nano -w system/skeleton/etc/inittab
       ...
       tty1::respawn:/sbin/getty 38400 tty1
@@ -344,7 +344,7 @@ For fastboot see appended instructions: "Debug Monitor serial console instructio
 
        ! HINT: you can open a second Xterm window, display this document, and use copy/paste
           > ssh <USER>@<IPADDR>
-          > cat instructions/Buildroot_XU3_MPlayer/build_xu3_mplayer.ins
+          > cat ~/xu3_mplayer/build_xu3_mplayer_new.ins
           - use shift-insert to paste selected text into the first Xterm window.
 
        > wget http://samples.mplayerhq.hu/3D/DSCF1928_fish.AVI
@@ -362,6 +362,13 @@ For fastboot see appended instructions: "Debug Monitor serial console instructio
       ###kill -TERM $(ps aux | grep Xorg | grep -v grep | awk '{print $1}')
        > killall -TERM Xorg
        > poweroff
+
+    ! Notice: There is appended instructions below which copy binaries of libmali.so and libstdc++.so.6.
+      Libmali.so will implement H/W exceleration on the T628 GPU and is copied from malideveloper.arm.com.
+      This library should be built/installed in the BuildRoot "make" environment.
+      Libstdc++.so.6 is a standard C++ library required by libmali.so and should be in buildroot now,
+      but there appears to be a configuration issue preventing this.
+
 
 
 
@@ -699,6 +706,76 @@ See above "Build & Install BuildRoot" and "Build & Install a kernel"
  $ sudo fastboot reboot
  ! DO NOT "fastboot flash" boot, kernel, ramdisk, userdata, or cache. These
    images are specific to Android and may over-write Buildroot partitions.
+
+
+
+
+
+
+________________________________________________
+
+Copy libmali.so and libstdc++.so.6 onto Odroid
+________________________________________________
+This appended instruction will be removed when proper config/build/install procedures
+are created for the main instructions. It is provided now for convience and testing.
+You will need a download of the Hardkernel recovery image for Ubuntu or, preferably,
+a rescently updated/bootable Hardkernel Ubuntu system on microSD. Hardkernel Ubuntu
+will be used as a source for copying the missing stdc++ and graphic libraries.
+###cd ~/xu3_mplayer
+###DEV_SD=/dev/sdX  # !!! make sure this is your microSD
+
+ ? IF you are using a microSD with an install of Hardkernel's Ubuntu
+   then mount it's root filesystem to /mnt
+    $ sudo mount $DEV_SD'2' /mnt
+ ? ELSE you'll need a Hardkernel Ubuntu system image and mount it's root filesystem.
+    $ ODROID_IMG=_______________________ # enter path & filename to the image
+      such-as: ~/ubuntu_work_odroid/ubuntu-15.04-mate-odroid-xu3-20150528.img
+    $ parted $ODROID_IMG unit B print | grep -E "ext|Start"
+    $ ROOT_START=________ # enter the "Start" of ext partition ie 135266304
+    $ sudo mount -o loop,ro,offset=$ROOT_START $ODROID_IMG /mnt
+
+ $ cp -a /mnt/usr/lib/arm-linux-gnueabihf/libstdc++.so.6* buildroot-2015.05/system/skeleton/usr/lib/
+ $ cp -a /mnt/usr/lib/arm-linux-gnueabihf/mali-egl/* buildroot-2015.05/system/skeleton/usr/lib/
+ $ rm buildroot-2015.05/system/skeleton/usr/lib/ld.so.conf 
+ # To varify library requirements, copy the ldd script that lists dynamically linked dependencies of executables
+ $ cp -a /mnt/usr/bin/ldd buildroot-2015.05/system/skeleton/usr/bin/
+
+ $ rm output/build/.root 
+ $ make
+ $ ls -als output/target/usr/lib/* | grep mali
+ - Now re-install the root image to the microSD
+   or use fastboot from "- Buildroot root image" above
+
+ # Another source for pre-built libmali.so
+   http://malideveloper.arm.com/downloads/drivers/binary/r5p0-06rel0/mali-t62x_r5p0-06rel0_linux_1+x11.tar.gz
+
+
+
+
+
+
+
+
+________________________________________________
+
+Add patch to BuildRoot mplayer from Bernd Kuhls
+________________________________________________
+ !!!!! THIS IS BROKEN !!!!!
+ !!!!! The patch did not fix the issue !!!!!
+###cd ~/xu3_mplayer/buildroot-2015.05/package/mplayer
+###wget http://patchwork.ozlabs.org/patch/492595/raw/ -O 0007-Add-additional-X11-dependencies.patch
+###Patch the patch dah!
+###nano -w 0007-Add-additional-X11-dependencies.patch
+###diff --git a/mplayer.mk b/mplayer.mk
+###index 3a61b8f..5a46aa3 100644
+###--- a/mplayer.mk
+###+++ b/mplayer.mk
+###cd ../../
+###make mplayer-dirclean
+###make mplayer-reinstall
+###I did the patch manually on alternate system
+###But it did not resolve the issue with mplayer's configure using host xor-dev files
+###I un-did this manual patch; remove lines 223 224 226 in package/mplayer/mplayer.mk
 
 
 
