@@ -39,6 +39,6 @@ structure described below:
 
  - In some cases a section could be entered out of order as
    though it were independent of previous sections. In this
-   case a '###' triplet may proceed steps that were expected
+   case a '###' triplet may precede steps that were expected
    to be preformed prior to the section.
 
