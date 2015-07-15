@@ -1,9 +1,44 @@
-This repository contains instructions for building a variaty of Linux based systems. The instructions are documented in human readable text files. A specific format is used to identify a type of process for each step such as:
- $ Execute this line on the console/terminal
- ! Important notice
- # Comment
- ? IF/ELSE conditional procedures
- - manual instruction or group of instructions
-      Three space indent for grouping steps in process
+This repository contains instructions for building a variety
+of Linux based systems and utilities. The instructions are
+simple text files written in a human readable format, ending
+with a '.ins' extension. These instructions do not require a
+special program or GUI to view their content. One can view
+the '.ins' files with any text file reader, editor or simply
+'cat' the content.
+
+The content of a '.ins' file was initially only a means for
+taking notes or capturing procedures, with lots of copy-paste
+from command line, history files, and other screen content.
+The instructions in this repository are an adaptation to these
+notes in an attempt to provide step-by-step procedures. The
+steps in the procedures were meant to be followed one at a time.
+There is no attempt to provide a copy-paste of multiple steps,
+although most single steps can be executed with copy-paste.
+The syntax used in these instruction will loosely follow the
+structure described below:
+
+ - Each step or entry begins with a multiple of 3-character
+   indents, triplets, with exception to the top level section
+   headers.
+
+ - The triplet indents will be 3 spaces with exception to the
+   last triplet on a line which identifies the procedure to
+   be preformed in that step.
+    $ Execute this line on the console/terminal
+    # Comment. Don't do anything just acknowledge the comment.
+    ! Important notice, like a high priority comment.
+    - manual instruction or group of instructions
+    ? IF/ELSE conditional procedures
+       ! Procures contained within a condition or group will
+         be preceded by one more triplet
+       ! steps that contain a single instruction over multiple
+         lines will follow on the next line, preceded by only
+         spaces.
    _____________________________________________
-   Overlined Header for seperating into sections
+ - Over-lined Header for separating into sections
+
+ - In some cases a section could be entered out of order as
+   though it were independent of previous sections. In this
+   case a '###' triplet may proceed steps that were expected
+   to be preformed prior to the section.
+
