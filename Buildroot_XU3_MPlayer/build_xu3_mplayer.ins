@@ -39,8 +39,8 @@ For fastboot see appended instructions: "Debug Monitor serial console instructio
    ___________________________________________
  - Install the Development environment
     $ sudo apt-get install build-essential git ccache xz-utils openssh-server
-    ! !!!! BUG-HACK FOR BUILDROOT's mplayer. Their make-magic is broken.
-      Configure is getting the Xorg development files from the HOST !!!!
+    ! !!!! BUG-HACK FOR BUILDROOT's mplayer. Configure is getting the Xorg
+      development files from the HOST !!!! Therefore the host needs xorg-dev. 
        $ sudo apt-get install xorg-dev
 
     $ wget http://releases.linaro.org/15.02/components/toolchain/binaries/arm-linux-gnueabihf/gcc-linaro-4.9-2015.02-3-x86_64_arm-linux-gnueabihf.tar.xz
@@ -721,61 +721,44 @@ are created for the main instructions. It is provided now for convience and test
 You will need a download of the Hardkernel recovery image for Ubuntu or, preferably,
 a rescently updated/bootable Hardkernel Ubuntu system on microSD. Hardkernel Ubuntu
 will be used as a source for copying the missing stdc++ and graphic libraries.
-###cd ~/xu3_mplayer
-###DEV_SD=/dev/sdX  # !!! make sure this is your microSD
+
+ $ cd ~/xu3_mplayer/buildroot-2015.05
 
  ? IF you are using a microSD with an install of Hardkernel's Ubuntu
    then mount it's root filesystem to /mnt
+    $ DEV_SD=/dev/sdX  # !!! make sure this is your microSD
     $ sudo mount $DEV_SD'2' /mnt
  ? ELSE you'll need a Hardkernel Ubuntu system image and mount it's root filesystem.
+   Ex. download image: ubuntu-15.04-mate-odroid-xu3-20150528.img from dn.odroid.com
     $ ODROID_IMG=_______________________ # enter path & filename to the image
-      such-as: ~/ubuntu_work_odroid/ubuntu-15.04-mate-odroid-xu3-20150528.img
+      such-as: ~/xu3_mplayer/ubuntu-15.04-mate-odroid-xu3-20150528.img
     $ parted $ODROID_IMG unit B print | grep -E "ext|Start"
     $ ROOT_START=________ # enter the "Start" of ext partition ie 135266304
     $ sudo mount -o loop,ro,offset=$ROOT_START $ODROID_IMG /mnt
 
- $ cp -a /mnt/usr/lib/arm-linux-gnueabihf/libstdc++.so.6* buildroot-2015.05/system/skeleton/usr/lib/
- $ cp -a /mnt/usr/lib/arm-linux-gnueabihf/mali-egl/* buildroot-2015.05/system/skeleton/usr/lib/
- $ rm buildroot-2015.05/system/skeleton/usr/lib/ld.so.conf 
- # To varify library requirements, copy the ldd script that lists dynamically linked dependencies of executables
- $ cp -a /mnt/usr/bin/ldd buildroot-2015.05/system/skeleton/usr/bin/
+ # Another posible source for pre-built libmali.so
+   http://malideveloper.arm.com/downloads/drivers/binary/r5p0-06rel0/mali-t62x_r5p0-06rel0_linux_1+x11.tar.gz
+
+ - Copy and verify the libmali, libGL/ES/EGL libraries
+    $ cp -a /mnt/usr/lib/arm-linux-gnueabihf/libstdc++.so.6* system/skeleton/usr/lib/
+    $ cp -a /mnt/usr/lib/arm-linux-gnueabihf/mali-egl/* system/skeleton/usr/lib/
+    $ sudo umount /mnt
+    $ rm system/skeleton/usr/lib/ld.so.conf 
+    $ ls -als output/target/usr/lib/* | grep -E "mali|GL"
+
+ # To varify library requirements for executables and other libraries, copy the "ldd" script that
+   lists dynamically linked dependencies. Then edit the script, change "/bin/bash" to "/bin/sh".
+    $ cp -a /mnt/usr/bin/ldd buildroot-2015.05/system/skeleton/usr/bin/
+    $ nano -w buildroot-2015.05/system/skeleton/usr/bin/ldd
+      #! /bin/sh
+      ...
 
  $ rm output/build/.root 
  $ make
- $ ls -als output/target/usr/lib/* | grep mali
  - Now re-install the root image to the microSD
    or use fastboot from "- Buildroot root image" above
 
- # Another source for pre-built libmali.so
-   http://malideveloper.arm.com/downloads/drivers/binary/r5p0-06rel0/mali-t62x_r5p0-06rel0_linux_1+x11.tar.gz
 
-
-
-
-
-
-
-
-________________________________________________
-
-Add patch to BuildRoot mplayer from Bernd Kuhls
-________________________________________________
- !!!!! THIS IS BROKEN !!!!!
- !!!!! The patch did not fix the issue !!!!!
-###cd ~/xu3_mplayer/buildroot-2015.05/package/mplayer
-###wget http://patchwork.ozlabs.org/patch/492595/raw/ -O 0007-Add-additional-X11-dependencies.patch
-###Patch the patch dah!
-###nano -w 0007-Add-additional-X11-dependencies.patch
-###diff --git a/mplayer.mk b/mplayer.mk
-###index 3a61b8f..5a46aa3 100644
-###--- a/mplayer.mk
-###+++ b/mplayer.mk
-###cd ../../
-###make mplayer-dirclean
-###make mplayer-reinstall
-###I did the patch manually on alternate system
-###But it did not resolve the issue with mplayer's configure using host xor-dev files
-###I un-did this manual patch; remove lines 223 224 226 in package/mplayer/mplayer.mk
 
 
 
