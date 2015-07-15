@@ -1,0 +1,10 @@
+This folder contains instructions for adding simple hello_world
+applications to BuildRoot. There are 2 applications presented in
+this instruction, hello & helloX. "hello" is an example of a console
+application and "helloX" is a an X11 application. Included in this
+folder are source code trees for each application. These instructions
+were written for the XU3_MPlayer Buildroot configuration presented
+in this repository. But they can be easily adapted to other BuildRoot
+configurations. These applications will build and execute on both
+host and target systems.
+

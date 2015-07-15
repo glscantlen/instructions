@@ -1,0 +1,161 @@
+_____________________________________________________
+
+Example for adding an application package to Buildroot
+______________________________________________________
+These instructions were developed on the XU3_MPlayer BuildRoot
+configuration and build tree. Some directory paths will be specific
+to that tree. These instructions assume a working BuildRoot
+configuration with a functional Xorg on the target.
+
+ ? IF you are using the XU3_MPlayer build tree
+   $ cd ~/xu3_mplayer/buildroot-2015.05/
+ ? ELSE cd to the top of your BuildRoot tree ie: buildroot-2015.05
+
+ - download the example "hello" code
+    $ svn export https://github.com/glscantlen/instructions/trunk/Buildroot_hello_world/hello ../hello
+    $ svn export https://github.com/glscantlen/instructions/trunk/Buildroot_hello_world/helloX ../helloX
+
+ # Add an entry for both hello applications into BuildRoot's KConfig (menuconfig).
+   The applications are added in alphabtic order to the "Miscellaneous" menu
+ $ nano -w package/Config.in
+   ...
+   <TAB>source "package/haveged/Config.in"
+   <TAB>source "package/hello/Config.in"
+   <TAB>source "package/helloX/Config.in"
+   <TAB>source "package/mcrypt/Config.in/Config.in"
+   ...
+
+ # add directories to hold the package configuration files
+ $ mkdir package/hello
+ $ mkdir package/helloX
+
+   ________________________________________________________________________
+ # add menu handling configuration files, hello/Config.in, helloX/Config.in
+
+ $ nano -w package/hello/Config.in
+   config BR2_PACKAGE_HELLO
+   <TAB>bool "hello"
+   <TAB>help
+   <TAB>  Test case adding the package hello.
+
+ $ nano -w package/helloX/Config.in
+   config BR2_PACKAGE_HELLOX
+   <TAB>bool "helloX"
+   <TAB>select BR2_PACKAGE_XLIB_LIBX11
+   <TAB>help
+   <TAB>  Test case adding a package helloX.
+
+   _________________________________________________________________________
+ # Add download/build configuration files, hello/hello.mk, helloX/helloX.mk
+
+ $ nano -w package/hello/hello.mk
+   ################################################################################
+   #
+   # hello
+   #
+   ################################################################################
+
+   HELLO_VERSION = master
+   HELLO_SITE = ../hello
+   HELLO_SITE_METHOD = local
+
+   ifeq ($(HELLO_SITE_METHOD),local)
+   define HELLO_CONFIGURE_CMDS
+   <TAB>$(MAKE) -C $(@D) clean
+   endef
+   endif
+
+   #$(TARGET_MAKE_ENV) $(MAKE) $(TARGET_CONFIGURE_OPTS) -C $(@D)
+   define HELLO_BUILD_CMDS
+   <TAB>$(MAKE) CC="$(TARGET_CC)" -C $(@D)
+   endef
+
+   define HELLO_INSTALL_TARGET_CMDS
+   <TAB>$(INSTALL) -D -m 0755 $(@D)/bin/* $(TARGET_DIR)/usr/bin
+   endef
+
+   $(eval $(generic-package))
+
+
+ $ nano -w package/helloX/helloX.mk
+   ################################################################################
+   #
+   # helloX
+   #
+   ################################################################################
+
+   HELLOX_VERSION = master
+   HELLOX_SITE = ../helloX
+   HELLOX_SITE_METHOD = local
+
+   ifeq ($(HELLOX_SITE_METHOD),local)
+   define HELLOX_CONFIGURE_CMDS
+   <TAB>$(MAKE) -C $(@D) clean
+   endef
+   endif
+
+   #$(TARGET_MAKE_ENV) $(MAKE) $(TARGET_CONFIGURE_OPTS) -C $(@D)
+   define HELLOX_BUILD_CMDS
+   <TAB>$(MAKE)  CXX="$(TARGET_CXX)"  CXX_INC="-Iinc -I$(STAGING_DIR)/usr/include/X11"  CXX_LIB="-L$(STAGING_DIR)/usr/lib -lX11" -C $(@D)
+   endef
+
+   define HELLOX_INSTALL_TARGET_CMDS
+   <TAB>$(INSTALL) -D -m 0755 $(@D)/bin/* $(TARGET_DIR)/usr/bin
+   endef
+
+   $(eval $(generic-package))
+
+
+   _____________________________________________________________
+ - Configure & Rebuild the Buildroot target filesystem and image
+    $ sudo apt-get install ncurses-dev
+    $ make menuconfig
+      Target packages -> Miscellaneous -> [*] hello
+                                          [*] helloX
+      Save configuration
+
+    $ make
+    ! You don't need to copy the whole image to the XU3. Use rsync or scp and
+      copy from ~/xu3_mplayer/buildroot-2015.05/output/target/usr/bin/hello
+
+_________________________________________________________________________________________________
+NOTICE: the '.mk' files above don't actually download anything because they are configured to use
+a local source tree. SITE and METHOD variables can be modified to change the download process.
+
+ # for SITE_METHOD = git
+       SITE = $(HOME)/xu3_mplayer/hello
+         or if you create a github repository of "hello" then
+       SITE = git://github.com/<USER>/hello
+       VERSION = branch or tag for a clone
+
+ # for SITE_METHOD = wget
+       SITE = https://github.com/<USER>/hello/tarball/$(HELLO_VERSION)
+         or other downloadable tarball
+
+ # If METHOD is undefined buildroot will guess depending on what the SITE is. For details see:
+   http://buildroot.uclibc.org/downloads/manual/manual.html#_infrastructure_for_packages_with_specific_build_systems
+
+   __________________________________________________________
+ ? IF you want to test the 'git' METHOD on the hello project:
+   ###cd ~/xu3_mplayer/buildroot-2015.05/
+
+    # initialize GIT in the hello source tree
+    $ git -C ../hello init  ; git -C ../hello add .  ; git -C ../hello commit -m "Initialize"
+
+    # configure the '.mk' file for git
+    $ nano -w package/hello/hello.mk
+      ...
+      HELLO_SITE = ../hello
+      HELLO_SITE_METHOD = git
+      ...
+
+    # Re-build Buildroot
+    $ rm dl/hello-master.tar.gz # Force Buildroot to re-download
+    $ make hello-dirclean       # Remove previous build tree for hello
+    $ make hello-reinstall      # Test the Re-build of hello
+    $ rm output/build/.root     # force Buildroot to create a new image
+    $ make
+
+
+
+
