@@ -1,16 +1,17 @@
 _____________________________________________________________________
 These instructions will configure an Apache web server and GIT server.
-The servers will maintain and publish Linux documents and other repos.
+The servers are running on CentOS/RedHat systems. This instruction
+will configure the servers to maintain and publish repositories.
 
  - install GIT, OpenSSH, and Apache servers
     # ... TBD ....
     # Install servers onto hostname giterdone @ 192.168.0.254
-    # add first user "giterdone" as the repo administrator
+    # add first user "giterdone" as the repository administrator
 
     - login giterdone and share it's home with everone in it's group
     $ chmod 770 /home/giterdone
 
-    ? IF you are initializing an empty repo for developers
+    ? IF you are initializing an empty repository for developers
        $ mkdir GLSLinuxDocs.git
        $ cd GLSLinuxDocs.git
        $ git init --bare --shared=group
@@ -23,7 +24,7 @@ The servers will maintain and publish Linux documents and other repos.
        $ git config core.sharedRepository group
       ###chown -R giterdone:giterdone ./
 
-    ? IF you want the repo viewable to web users
+    ? IF you want the repository viewable to web users
        $ su -
        $ cd /var/www/html
        $ git clone /home/giterdone/GLSLinuxDocs.git LinuxDocs
