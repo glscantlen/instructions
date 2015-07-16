@@ -6,15 +6,15 @@ special program or GUI to view their content. One can view
 the '.ins' files with any text file reader, editor or simply
 'cat' the content.
 
-The content of a '.ins' file was initially only a means for
-taking notes or capturing procedures, with lots of copy-paste
-from command line, history files, and other screen content.
+The content of a '.ins' file was initially meant for taking
+notes or capturing procedures, with lots of copy-paste from
+command line, history & log files, and other screen content.
 The instructions in this repository are an adaptation to these
 notes in an attempt to provide step-by-step procedures. The
 steps in the procedures were meant to be followed one at a time.
 There is no attempt to provide a copy-paste of multiple steps,
 although most single steps can be executed with copy-paste.
-The syntax used in these instruction will loosely follow the
+The syntax used in these instruction will closely follow the
 structure described below:
 
  - Each step or entry begins with a multiple of 3-character
@@ -23,22 +23,47 @@ structure described below:
 
  - The triplet indents will be 3 spaces with exception to the
    last triplet on a line which identifies the procedure to
-   be preformed in that step.
-    $ Execute this line on the console/terminal
-    # Comment. Don't do anything just acknowledge the comment.
-    ! Important notice, like a high priority comment.
+   be preformed in that step. For example:
+
+    $ Execute this line on the console/terminal. Can copy-paste
+    # Comment. Don't do anything. This is only a comment.
+    ! Important notice. A very important comment.
     - manual instruction or group of instructions
     ? IF/ELSE conditional procedures
        ! Procures contained within a condition or group will
          be preceded by one more triplet
-       ! steps that contain a single instruction over multiple
+       ! Steps that contain a single instruction over multiple
          lines will follow on the next line, preceded by only
          spaces.
+
    _____________________________________________
  - Over-lined Header for separating into sections
 
- - In some cases a section could be entered out of order as
-   though it were independent of previous sections. In this
-   case a '###' triplet may precede steps that were expected
-   to be preformed prior to the section.
+    # In some cases a section or group of steps might be entered
+      out of sequence and this procedure may not be independent
+      of previous procedures. For that case a '###' triplet will
+      precede steps that were expected to be preformed prior to
+      entering that section.
+
+ - Many instructions will require steps that edit configuration
+   files with a text editor. These steps will typically use "nano"
+   for the editor although other editors could be used.
+
+    # In cases where the configuration file is new and too large
+      for manual entry, a down-loadable file will be provided in
+      the repository.
+
+    # in cases where the configuration file already exists, a
+      comment may be used to instruct what part of the file is
+      changed. Following the "nano" edit command will be the text
+      that is the be changed. This text will be preceded by the
+      correct number of triplet spaces to indicate a single step
+      over multiple lines. The text that is entered into the
+      configuration file will not have these preceding spaces.
+
+    # In cases where the procedures are too difficult for a single
+      step manual edit, there will be provided scripts, patches,
+      or appended instructions to provide the detail.
+
+
 
