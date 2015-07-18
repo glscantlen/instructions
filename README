@@ -49,17 +49,20 @@ structure described below:
    files with a text editor. These steps will typically use "nano"
    for the editor although other editors could be used.
 
+    # Following the "nano" edit command will be the text to be
+      entered. This text will be preceded by the correct number of
+      triplet spaces to indicate a single step over multiple lines.
+      The text that is entered into the file will not have these
+      preceding spaces.
+
     # In cases where the configuration file is new and too large
       for manual entry, a down-loadable file will be provided in
       the repository.
 
     # in cases where the configuration file already exists, a
       comment may be used to instruct what part of the file is
-      changed. Following the "nano" edit command will be the text
-      that is the be changed. This text will be preceded by the
-      correct number of triplet spaces to indicate a single step
-      over multiple lines. The text that is entered into the
-      configuration file will not have these preceding spaces.
+      changed. For "nano" the Ctrl-W command can be used to search
+      for the text to be changed.
 
     # In cases where the procedures are too difficult for a single
       step manual edit, there will be provided scripts, patches,
