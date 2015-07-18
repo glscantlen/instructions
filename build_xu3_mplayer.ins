@@ -364,7 +364,7 @@ For fastboot see appended instructions: "Debug Monitor serial console instructio
        > poweroff
 
     ! Notice: There is appended instructions below which copy binaries of libmali.so and libstdc++.so.6.
-      Libmali.so will implement H/W exceleration on the T628 GPU and is copied from malideveloper.arm.com.
+      Libmali.so will implement H/W acceleration on the T628 GPU and is copied from malideveloper.arm.com.
       This library should be built/installed in the BuildRoot "make" environment.
       Libstdc++.so.6 is a standard C++ library required by libmali.so and should be in buildroot now,
       but there appears to be a configuration issue preventing this.
@@ -717,9 +717,9 @@ ________________________________________________
 Copy libmali.so and libstdc++.so.6 onto Odroid
 ________________________________________________
 This appended instruction will be removed when proper config/build/install procedures
-are created for the main instructions. It is provided now for convience and testing.
+are created for the main instructions. It is provided now for convenience and testing.
 You will need a download of the Hardkernel recovery image for Ubuntu or, preferably,
-a rescently updated/bootable Hardkernel Ubuntu system on microSD. Hardkernel Ubuntu
+a recently updated/bootable Hardkernel Ubuntu system on microSD. Hardkernel Ubuntu
 will be used as a source for copying the missing stdc++ and graphic libraries.
 
  $ cd ~/xu3_mplayer/buildroot-2015.05
