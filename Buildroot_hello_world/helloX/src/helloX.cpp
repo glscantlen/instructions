@@ -15,8 +15,8 @@ int main(int argc, char **argv)
 	int scr = DefaultScreen(dpy);
 
 	Window win = XCreateSimpleWindow(dpy, RootWindow(dpy, scr),
-                 1, 1, 250, 250, 0, 
-			     BlackPixel(dpy, scr), BlackPixel(dpy, scr));
+	             1, 1, 250, 250, 0,
+	             BlackPixel(dpy, scr), BlackPixel(dpy, scr));
 
 	GC gc = XCreateGC(dpy, win, 0, NULL);
 
@@ -34,8 +34,8 @@ int main(int argc, char **argv)
 		if(e.type==Expose && e.xexpose.count<1)
 			XDrawString(dpy, win, gc, 100, 120, "Howdy!", 6);
 		else if( e.type==ClientMessage
-			  && e.xclient.data.l[0] == (int)wmDeleteMessage)
-            break;
+		      && e.xclient.data.l[0] == (int)wmDeleteMessage)
+			break;
 		else if(e.type==ButtonPress) break;
 	}
 
