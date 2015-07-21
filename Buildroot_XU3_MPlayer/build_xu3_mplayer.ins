@@ -39,8 +39,8 @@ For fastboot see appended instructions: "Debug Monitor serial console instructio
    ___________________________________________
  - Install the Development environment
     $ sudo apt-get install build-essential git ccache xz-utils openssh-server
-    ! !!!! BUG-HACK FOR BUILDROOT's mplayer. Configure is getting the Xorg
-      development files from the HOST !!!! Therefore the host needs xorg-dev. 
+    ! !!!! BUG-HACK FOR BUILDROOT's mplayer. MPlayer's "configure" incorrectly uses
+      the Xorg development files on the HOST !!!! Therefore the host will need xorg-dev.
        $ sudo apt-get install xorg-dev
 
     $ wget http://releases.linaro.org/15.02/components/toolchain/binaries/arm-linux-gnueabihf/gcc-linaro-4.9-2015.02-3-x86_64_arm-linux-gnueabihf.tar.xz
@@ -363,13 +363,43 @@ For fastboot see appended instructions: "Debug Monitor serial console instructio
        > killall -TERM Xorg
        > poweroff
 
-    ! Notice: There is appended instructions below which copy binaries of libmali.so and libstdc++.so.6.
-      Libmali.so will implement H/W acceleration on the T628 GPU and is copied from malideveloper.arm.com.
-      This library should be built/installed in the BuildRoot "make" environment.
-      Libstdc++.so.6 is a standard C++ library required by libmali.so and should be in buildroot now,
-      but there appears to be a configuration issue preventing this.
 
 
+
+
+___________________________________________________
+
+    TODO list
+___________________________________________________
+
+ # Instructions for packaging of hello world example code is provided
+   in a sibling folder, Buildroot_hello_world.
+
+ * Fix the mplayer bug that requires X86 host development files, xorg-dev,
+   for the arm build.
+
+ * Configure/build/install for libmali.so. May require special licensing
+   This library supports H/W accelerated graphics for EGL and GLES.
+   It also provides OpenCL compute support on the T628 GPU
+
+ * Provide temporary fix for libmali.so EGL/GLES libraries with buildroot
+   installed binaries. Notice: There is appended instructions below which
+   copy binaries of libmali.so and libstdc++.so.6. Libmali.so will implement
+   H/W acceleration on the T628 GPU and is copied from malideveloper.arm.com.
+   This library should be built/installed in the BuildRoot "make" environment.
+   Libstdc++.so.6 is a standard C++ library required by libmali.so and should
+   be in buildroot now, but there appears to be a configuration issue
+   preventing this.
+
+ * Linaro arm libstdc++.so.6 needs configure/build/install
+   It is currently only required for pre-built libmali.so libraries.
+
+ * Provide instructions for packaging of GLES2 and EGL example code.
+
+ * Provide instructions for packaging of OpenCL example code.
+
+ * Fix deficient acceleration of GLES code NOT running under Marco window manager.
+   Provide test examples with es2gears.
 
 
 
@@ -379,9 +409,9 @@ ___________________________________________________
 
     Create ARMSOC xdriver_xf86-video-armsoc.mk
 ___________________________________________________
-Thanks to Legath on the Odroid forum for help with this .mk and thanks to mihailescu2m
-for providing the fastest armsoc driver I've tested, comparing glxgears framerate.
-Other libs & drivers for es2gears_x11/wayland still need config/built/installed/tested.
+Thanks to Legath on the Odroid forum for help with this .mk. Also thanks to
+mihailescu2m and mdrjr for providing the armsoc driver sources. Other libraries
+for EGL/GLES still need config/built/installed/tested. see "TODO list"
 ###cd ~/xu3_mplayer/buildroot-2015.05
 
  ! NOTICE: several versions of this driver code are currently being developed.
@@ -394,7 +424,9 @@ Other libs & drivers for es2gears_x11/wayland still need config/built/installed/
          AND to re-install
        $ make xdriver_xf86-video-armsoc-reinstall
        $ ls -als output/target/usr/lib/xorg/modules/drivers
-         Need make to re-create the tar
+       ! You can test this driver on the XU3. Login to the Odroid as root and use scp.
+          > scp <USER>@<IPADDR>:~/xu3_mplayer/buildroot-2015.05/output/target/usr/lib/xorg/modules/drivers/armsoc_drv.so  /usr/lib/xorg/modules/drivers/
+       # You'll then need to re-create the tar image
        $ ls -als output/images
        $ make -j4
 
@@ -410,10 +442,10 @@ Other libs & drivers for es2gears_x11/wayland still need config/built/installed/
 #XDRIVER_XF86_VIDEO_ARMSOC_SITE = $(call github,endlessm,xf86-video-armsoc,$(XDRIVER_XF86_VIDEO_ARMSOC_VERSION))
 #XDRIVER_XF86_VIDEO_ARMSOC_VERSION = 1.3.0
 #XDRIVER_XF86_VIDEO_ARMSOC_SITE = git://anongit.freedesktop.org/xorg/driver/xf86-video-armsoc
-XDRIVER_XF86_VIDEO_ARMSOC_VERSION = 13a46a857369cf3627cf6d4d6f04e5420341cde3
-XDRIVER_XF86_VIDEO_ARMSOC_SITE = $(call github,mihailescu2m,xf86-video-armsoc,$(XDRIVER_XF86_VIDEO_ARMSOC_VERSION))
-#XDRIVER_XF86_VIDEO_ARMSOC_VERSION = 5422_r5p1
-#XDRIVER_XF86_VIDEO_ARMSOC_SITE = $(call github,mdrjr,xf86-video-armsoc,$(XDRIVER_XF86_VIDEO_ARMSOC_VERSION))
+#XDRIVER_XF86_VIDEO_ARMSOC_VERSION = 13a46a857369cf3627cf6d4d6f04e5420341cde3
+#XDRIVER_XF86_VIDEO_ARMSOC_SITE = $(call github,mihailescu2m,xf86-video-armsoc,$(XDRIVER_XF86_VIDEO_ARMSOC_VERSION))
+XDRIVER_XF86_VIDEO_ARMSOC_VERSION = 5422_r5p1
+XDRIVER_XF86_VIDEO_ARMSOC_SITE = $(call github,mdrjr,xf86-video-armsoc,$(XDRIVER_XF86_VIDEO_ARMSOC_VERSION))
 XDRIVER_XF86_VIDEO_ARMSOC_AUTORECONF = YES
 XDRIVER_XF86_VIDEO_ARMSOC_DEPENDENCIES = xserver_xorg-server xproto_fontsproto xproto_randrproto xproto_renderproto xproto_xextproto xproto_xproto
 XDRIVER_XF86_VIDEO_ARMSOC_CONF_OPTS = --with-drmmode=exynos --enable-maintainer-mode
@@ -746,12 +778,17 @@ will be used as a source for copying the missing stdc++ and graphic libraries.
     $ rm system/skeleton/usr/lib/ld.so.conf 
     $ ls -als output/target/usr/lib/* | grep -E "mali|GL"
 
- # To varify library requirements for executables and other libraries, copy the "ldd" script that
-   lists dynamically linked dependencies. Then edit the script, change "/bin/bash" to "/bin/sh".
-    $ cp -a /mnt/usr/bin/ldd buildroot-2015.05/system/skeleton/usr/bin/
-    $ nano -w buildroot-2015.05/system/skeleton/usr/bin/ldd
-      #! /bin/sh
-      ...
+ ? IF you need to list dynamically linked dependencies for executables and other libraries:
+    - You can list target executsbles from the host using arm-linux-gnueabihf-objdump
+       $ ../linaro-4.9/bin/arm-linux-gnueabihf-objdump -x output/target/system/skeleton/usr/lib/libmali.so | grep NEEDED
+    - And you can copy the "ldd" script to the Odroid's root filesystem.
+       $ cp -a /mnt/usr/bin/ldd buildroot-2015.05/system/skeleton/usr/bin/
+       # Edit the script, change "/bin/bash" to "/bin/sh".
+       $ nano -w buildroot-2015.05/system/skeleton/usr/bin/ldd
+         #! /bin/sh
+         ...
+       # Then, after booting the Odroid execute the script from it's command line
+       > ldd /usr/lib/libmali.so
 
  $ rm output/build/.root 
  $ make
