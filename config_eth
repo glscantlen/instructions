@@ -1,0 +1,9 @@
+#! /bin/bash
+echo >> output/target/etc/network/interfaces
+echo "auto eth0" >> output/target/etc/network/interfaces
+echo "iface eth0 inet static" >> output/target/etc/network/interfaces
+echo "address 192.168.0.123" >> output/target/etc/network/interfaces
+echo "netmask 255.255.255.0" >> output/target/etc/network/interfaces
+echo "gateway 192.168.0.1" >> output/target/etc/network/interfaces
+unlink output/target/etc/resolv.conf
+echo "nameserver 8.8.8.8" >> output/target/etc/resolv.conf
