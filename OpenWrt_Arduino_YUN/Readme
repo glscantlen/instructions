@@ -1,0 +1,16 @@
+This folder contains instructions developed from notes taken during
+testing and evaluating of the Arduino Yun. The Yun uses 2 micro-
+controllers. An ATmega32u4 RISC and an Atheros AR9331 MIPS. The
+Yun is a combination of the Arduino Leonardo with a WiFi router.
+This marriage has many applications for (IoT) Internet of Things
+using remote and automated controls with Internet interface. And
+Internet distributed data loggers and processing.
+
+The following functions have been addressed in these tests.
+ * Conectivity with WiFi, Ethernet, async serial, and USB.
+ * Arduino micro-code complie, link and upload.
+ * Arduino IDE install and build/upload functions.
+ * AVR toolchain use for micro-code complie, link and upload.
+ * OpenWrt system function and upgrade on the Atheros.
+ * The OpenWrt system build and install.
+

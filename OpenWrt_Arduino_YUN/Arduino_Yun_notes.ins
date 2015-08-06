@@ -1,0 +1,430 @@
+These notes are taken for testing an Arduino-Yun on Ubuntu-14.04.
+The YUN uses two processors. One is an ATmega32u4, used in the
+Leonardo, a low-power, RISC-based microcontroller with 32KB of
+flash memory, 2.5kB ram and a microUSB device interface. The other
+is an Atheros AR9331, used by WiFi routers, a MIPS based SoC with
+64MB ram, 16MB flash, WiFi AP, Ethernet, USB2, micoSD, and more.
+These notes capture procedures preformed for initial evaluations
+of the Arduino Yun.
+
+ - Open a terminal window. Many of the steps in these instructions
+   will be command line entries and can be cut/paste to this
+   terminal window. Some of these command line steps will contain
+   notes following the '#' symbol. These notes will not effect the
+   command and may be included at the terminal entry.
+
+ $ mkdir ~/test_arduino_yun
+ $ cd ~/test_arduino_yun
+
+ # Retrieve the latest copy of this instruction
+ $ REPO_URL_PATH="https://github.com/glscantlen/instructions/raw/master/OpenWrt_Arduino_YUN"
+ $ wget $REPO_URL_PATH/Arduino_Yun_notes.ins -O ./Arduino_Yun_notes_new.ins
+
+
+____________________________________________
+CONNECT TO Atheros WIRELESS and WIRED NETWORK
+Note: the Atheros will look and feel like a WiFi router. It uses
+an OS built from a development system called OpenWrt. OpenWrt is
+commonly used on WiFi routers and was derived from BuildRoot.
+Atheros also uses u-boot and a linux kernel version ~ 3.3.X
+
+ - power up Arduino with microUSB. Note: It can take over 1 minute
+   for the Atheros to complete it's bootup. Wait for the USB LED.
+   This white LED indicates status of the USB 2.0, NOT the microUSB.
+ - connect Ubuntu host wireless to Atheros access point (AP). The AP
+   will use the name Arduino Yun-XXXXXXXX.
+   OR connect ethernet via RJ45. The Atheros will attempt to get an
+   IP address for the wired ethernet from a DHCP server. If that
+   fails you will not have access via wired ethernet. This ethernet
+   is equivalent to the WAN port on a WiFi router.
+ $ ping arduino.local
+ - lanch a web browser @ http://arduino.local
+   first time password=arduino
+
+
+____________________________________________________________________
+CONFIGURE ARDUINO YUN's USB-UART for Atheros console and Arduino IDE
+###REPO_URL_PATH="https://github.com/glscantlen/instructions/raw/master/OpenWrt_Arduino_YUN"
+###cd ~/test_arduino_yun
+
+ - Connect Ubuntu host USB to the arduino microUSB. The microUSB
+   belongs to the ATmega32u4, which can be bridged through microcode
+   to the Atheros uart. If the ATmega32u4 is not running microcode
+   that supports this bridging the Atheros console will not be
+   available at the microUSB. Also, some ATmega32u4 microcode may
+   not provide microUSB access at all. An example of this is used
+   in tests below. Use a double click on the 32U4-RST button to
+   force a microUSB reset, allowing ~10 seconds to start an upload
+   of new microcode to the ATmega32u4. You will see a "throbbing"
+   red LED (L13). Newly loaded code may then provide microUSB
+   access and support bridging to the Atheros. The Yun is normally
+   shipped with microcode that provides USB access but not bridging.
+
+ # avrdude is an upload utility for the ATmega32u4
+ $ sudo apt-get install avrdude
+ # downlod the microcode that we will upload to the ATmega32u4
+ $ wget $REPO_URL_PATH/minimum.hex
+ $ wget $REPO_URL_PATH/console.hex
+
+ $ dmesg | grep ttyACM     # Note ATmega32u4 uart = /dev/ttyACM*
+ $ lsusb | grep -i arduino # Note the VID:PID for following rules
+
+ ? IF you dont see an Arduino USB device, verify cable & power, then
+   upload ATmega32u4 microcode that provides minimum USB access
+    - Type/copy this folowing command line but do NOT press enter
+       $ sudo avrdude -v -patmega32u4 -cavr109 -P/dev/ttyACM0 -b57600 -D -Uflash:w:minimum.hex:i
+    - Double-click the 32U4-RST button, press enter NOW, then "lsusb"
+       $ lsusb | grep -i arduino
+
+ # Allow normal user access to the Yun's microUSB
+ $ sudo nano -w /lib/udev/rules.d/70-arduino-usb.rules 
+   KERNEL=="ttyACM*", MODE="0666"
+   ACTION=="add|change", SUBSYSTEM=="usb"
+   ATTRS{idVendor}=="2341", ATTRS{idProduct}=="8041"
+   TAG+="uaccess"
+
+ $ sudo udevadm control --reload-rules
+ $ sudo udevadm trigger
+
+ # Finally we can upload the ATmega32u4 microcode that bridges
+   it's microUSB to the Atheros serial console. Note the 'stty'
+   command prior to "avrdude" will reset the microUSB, preparing
+   the ATmega32u4 for avrdude's upload of "console.hex".
+ $ stty -F /dev/ttyACM0 1200 ; sleep 1 ; avrdude -v -patmega32u4 -cavr109 -P/dev/ttyACM0 -b57600 -D -Uflash:w:console.hex:i
+
+ # Use miniterm.py to connect to the Atheros console
+   Notes: If the ATmega32u4 is not providing the bridge when you
+   start miniterm you may not exit immediately, requiring ~25 sec
+   timeout. The YUN-RST button will reboot the Atheros OS. Reboot
+   can also be entered at the serial console. And you can interrupt
+   the u-boot process by holding the space bar during bootup. To
+   reboot from the u-boot command line enter "reset"
+ $ miniterm.py --lf /dev/ttyACM0 -b 115200
+    > root # no password
+    > ls
+    > exit # exit root user
+
+ ! NOTICE: If you do not exit "miniterm" you will have problems
+   uploading to the ATmega32u4. Use this control key to exit:
+ - press ctl+]
+
+
+___________________________________________________________________
+INSTALL ARDUINO IDE and build/upload the Atheros bridging microcode
+###cd ~/test_arduino_yun
+
+ ! NOTICE: apt-get install arduino arduino-core is old we will
+   use the latest version. http://www.arduino.cc/en/Main/Software
+   The Arduino IDE may also have problems uploading microcode if
+   the currently running microcode does not provide microUSB access.
+   You may still need to double-click the 32U4-RST button before
+   starting an upload.
+
+ $ sudo apt-get install xz-utils
+ $ wget https://www.arduino.cc/download.php?f=/arduino-nightly-linux64.tar.xz
+ $ tar -xvf download.php?f=%2Farduino-nightly-linux64.tar.xz
+
+ $ arduino-nightly/arduino
+    - Tools --> Board --> Arduino Yun
+    - Tools --> Port --> /dev/ttyACM0
+       # if needed, double-click the 32U4-RST button and try again
+    - Tools --> Programmer --> AVRISP mkII
+    - File -> Examples -> Bridge -> YunSerialTerminal
+    - Sketch --> Verify/Compile
+    - Sketch --> Upload
+       # if needed, double-click the 32U4-RST button and try again
+    - File --> Quit
+
+ $ miniterm.py --lf /dev/ttyACM0 -b 115200
+    > <CR>
+    > ls -als
+    > uname -a
+    > exit
+    - press ctl+]
+
+
+____________________________
+BUILD THE IDE SOURCE
+FIXME: these instructions to be added
+ ! https://code.google.com/p/arduino/wiki/BuildingArduino
+
+
+_________________________________________________
+MANUAL (without IDE) BUILD & UPLOAD microcode to the ATmega32u4
+Two examples are demonstrated in this procedure using the Blink
+program. The first example of a manual build will build Blink like
+the IDE builds Blink. The second example is a minimized build of
+Blink that occupies one third the amount of storage memory and only
+9 bytes of dynamic memory on the ATmega32u4. Hence, there will not
+be support code for the microUSB in the second build which requires
+forcing a microUSB reset before the next microcode upload. As
+described above, use a double-click on the 32U4-RST button to force
+this reset. For convenience the following procedures have been
+implemented using a Makefile.
+###cd ~/test_arduino_yun
+
+ $ sudo apt-get install gcc-avr avr-libc subversion
+ $ svn export https://github.com/glscantlen/instructions/trunk/OpenWrt_Arduino_YUN/manual_build manual_build
+
+ # This folder contains a copy of Arduino's core modules and Yun
+   header files. Also added to Arduino's files are source code for
+   several examples tested here. The included Makefile will build
+   the examples using the recently installed AVR utilities. The
+   Makefile will also upload the built code to the ATmega32u4.
+   Note: the Makefile can be directed to use the IDE's AVR tools.
+ $ cd manual_build
+
+ # build the Blink examples. This is nearly identical to the IDE
+   version. The difference being there is no ".ino" file. This
+   build uses a '.cpp' file in it's place and contains the same
+   source as the '.ino' with an added #include "Arduino.h"
+ ? IF you have installed the IDE then run a "diff"
+    $ diff Blink.cpp ../arduino*/examples/01.Basics/Blink/Blink.ino
+ $ make BASENAME=Blink
+ ! Note the size of the program and data, 4186 and 135 bytes.
+
+ # MiniBlink is an example of code that preforms the same basic
+   function as Blink but with less memory usage. The difference
+   is that miniBlink does not contain support code to handle the
+   microUSB reset. The microUSB can still be accessed as described
+   above, using the 32U4-RST button. MiniBlink.cpp does not contain
+   the typical "setup" and "loop" functions but it does have a
+   "main" function containing the setup and loop code.
+ $ make BASENAME=miniBlink
+ ! Note the size of the program and data, 1246 and 9 bytes.
+
+ # To upload the code to the ATmega32u4:
+ $ make BASENAME=miniBlink upload
+ ! Notice the miniBlink will need a reset or power cycle to execute
+   it's resently uploaded code. And the Yun will require a double-
+   click reset before starting the next upload.
+
+ # "make" uses "Makefile" with 3 user defined variables to contol
+   the build. The BASENAME as shown above, will define the ".cpp"
+   file to build. This is currently limited to only one source
+   file. The variable BASEINC will direct the Makefile to include
+   additional header file directories in the build. AVR_PATH will
+   direct the Makefile to use a different set of AVR tools. For
+   example you can use the compilers that came with the Arduino
+   IDE. The next example build uses all three variables. Before
+   running the example you'll want to clean out the old builds so
+   everthing gets rebuilt with the IDE's AVR tools.
+ $ make BASENAME=* clean
+ $ make AVR_PATH=~/test_arduino_yun/arduino*/hardware/tools/avr/bin BASENAME=console BASEINC=-I./ upload
+
+ # Also note the upload probably failed because we had previously
+   loaded miniBlink. You'll need to double-click the 32U4-RST
+   button then, within a few seconds, re-run the upload.
+    # error = can't open device "/dev/ttyACM0"
+
+
+_____________________________________________
+UPGRADE LATEST Atheros OpenWrt SYSTEM IMAGE USING SSH
+The '<' designates command lines to be entered or copy/paste
+into ssh or the Atheros console.
+see http://www.arduino.cc/en/Tutorial/YunSysupgrade
+###cd ~/test_arduino_yun
+
+ - check your ssh access
+    $ ssh root@arduino.local # save RSA key: "yes"
+      password=arduino
+       > uname -a
+       > exit # from ssh
+    ? IF ssh fails with "RSA host key has changed"
+      FIXME: add inst. to find bad key entry
+       # Remove the last key entry
+       $ nano -w ~/.ssh/known_hosts 
+       - Try to ssh again. If it fails remove another key till it
+         passes. When you're out of patience just delete them all!
+
+ $ wget http://downloads.arduino.cc/openwrtyun/1/YunSysupgradeImage_v1.5.3.zip
+ $ unzip YunSysupgradeImage_v1.5.3.zip
+ $ scp openwrt-ar71xx-generic-yun-16M-squashfs-sysupgrade.bin root@arduino.local:/tmp/upgrade.bin
+ $ ssh root@arduino.local
+    > ls /tmp -als
+    > kill-bridge
+    > exec sysupgrade -n /tmp/upgrade.bin
+      Writing Firmware .......takes a minute or two
+      Upgrade completed
+      Rebooting system...
+    - ctl+C to terminate ssh...maybe???..when it reboots
+
+ - Wait for Arduino to reboot
+ $ ssh root@arduino.local uname -a
+   ssh key should fail because you are running a different kernel
+   use the instructions above to clean up "known_hosts"
+
+
+__________________________________________________________
+UPGRADE LATEST Atheros OpenWrt SYSTEM IMAGE USE WEB SERVER
+see http://www.arduino.cc/en/Tutorial/YunSysupgrade
+###cd ~/test_arduino_yun
+###wget http://downloads.arduino.cc/openwrtyun/1/YunSysupgradeImage_v1.5.3.zip
+###unzip YunSysupgradeImage_v1.5.3.zip
+
+ $ ping arduino.local
+ - web browse @ http://arduino.local # or use IP address, if you know it.
+   first time password=arduino
+ - Select "CONFIGURE"
+      then "advanced configuration panel"
+      Select tabs "System"
+      then tabs "Backup/Flash Firmware"
+      Select from Flash new firmware image "Choose File" or "Browse"
+      In File Dialog select ~/test_arduino_yun/openwrt-ar71xx-generic-yun-16M-squashfs-sysupgrade.bin
+      click the "Flash image" button
+      click the "Proceed" button
+
+ # that was much faster then ssh
+   .....Maybe not ???? 
+ - Login page will display. Login to reboot.
+
+
+________________________________________
+BUILD Atheros openwrt system from SOURCE
+###cd ~/test_arduino_yun
+
+ $ git clone https://github.com/arduino/openwrt-yun.git
+ $ cd openwrt-yun/
+ $ mkdir ../openwrt_downloads
+ $ sudo apt-get install gawk subversion xsltproc libssl-dev tcl-dev tk-dev libxml-parser-perl ncurses-dev
+
+ # This build will take ~ 1 hr on my quad-core
+ $ BUILD_BASE_ONLY=Yes DL_FOLDER=../openwrt_downloads MAKE_JOBS=5 ./build.sh
+ ? IF you need to restart the build: (nohup will log to nohup.out)
+    $ rm -f nohup.out && MAKE_JOBS=5 nice -n 10 nohup make -n -j $MAKE_JOBS V=s
+    - you may want to tail the log in another terminal:
+       $ tail -f nohup.out
+ - Use Flash instructions below to install the newly built system:
+ $ sudo cp bin/ar71xx/openwrt-ar71xx-generic-yun-16M-squashfs-sysupgrade.bin /var/lib/tftpboot/new_sysupgrade.bin
+ $ sudo cp bin/ar71xx/openwrt-ar71xx-generic-yun-16M-kernel.bin /var/lib/tftpboot/new_kernel.bin
+ $ sudo cp bin/ar71xx/openwrt-ar71xx-generic-yun-16M-rootfs-squashfs.bin /var/lib/tftpboot/new_rootfs.bin
+ $ sudo ln -s new_kernel.bin /var/lib/tftpboot/kernel
+ $ sudo ln -s new_rootfs.bin /var/lib/tftpboot/rootfs
+
+
+
+_____________________________________________________
+Flash a new kernel and/or root filesystem to the Atheros
+The flash is preformed in u-boot using tftp.
+CAUTION !!! THIS CAN VOID YOUR ARDUINO YUN WARRANTY
+DO NOT FLASH A WORKING U-BOOT. IF THE U-BOOT GETS CORRUPTED
+YOU'LL NEED TO UNSOLIDER, REMOVE, & REPLACE THE FLASH MEMORY !!!
+SEE http://www.arduino.cc/en/Tutorial/YunUBootReflash
+If you don't believe it read this sad story:
+http://forum.arduino.cc/index.php?topic=287220
+###cd ~/test_arduino_yun
+###wget $REPO_URL_PATH/console.hex -O manual_build/console.hex
+
+###sudo apt-get install tftpd-hpa # could not get this to work!
+ $ sudo apt-get install xinetd tftpd # tftp # client for testing
+ $ sudo nano /etc/xinetd.d/tftp
+   service tftp
+   {
+   protocol        = udp
+   port            = 69
+   socket_type     = dgram
+   wait            = yes
+   user            = nobody
+   server          = /usr/sbin/in.tftpd
+   server_args     = /var/lib/tftpboot
+   disable         = no
+   }
+ $ sudo /etc/init.d/xinetd restart
+###sudo service ufw stop # not required... sometimes
+
+ ? IF you have not built the OpenWrt system from source as
+   instructed above then you can download a prebuilt kernel
+   and rootfs
+    $ wget http://downloads.arduino.cc/openwrtyun/1/YunImage_v1.5.3.zip
+    $ sudo unzip YunImage_v1.5.3.zip -d /var/lib/tftpboot
+    $ sudo ln -s openwrt-ar71xx-generic-yun-16M-kernel.bin /var/lib/tftpboot/kernel
+    $ sudo ln -s openwrt-ar71xx-generic-yun-16M-rootfs-squashfs.bin /var/lib/tftpboot/rootfs
+ ? ELSE the kernel and roofs will be available to u-boot with tftp.
+
+ $ ls -als /var/lib/tftpboot
+
+ ! Ubuntu 15.04 has issues with the way we install tftpboot. The
+   server seems to randomly not work. I've discovered it may take
+   severel xinitd restarts to get it running. This doesn't appear
+   to be an issue on Ubuntu 14.04
+   ###sudo /etc/init.d/xinetd restart      # not required... sometimes
+   ###sudo service network-manager restart # not required... sometimes
+
+ - connect microUSB and RJ45 Ethernet to the Arduino-Yun. Later
+   you will need two IP address on this RJ45 network. You will
+   need the reported address of your host and you'll need an
+   arbitrary address to temporarily assign to the Yun.
+    $ ip route
+
+ $ stty -F /dev/ttyACM0 1200 ; sleep 1 ; avrdude -v -patmega32u4 -cavr109 -P/dev/ttyACM0 -b57600 -D -Uflash:w:manual_build/console.hex:i
+ - open a new terminal for the serial console
+   if needed, see CONFIGURE ARDUINO YUN's USB-UART above
+    $ miniterm.py --lf /dev/ttyACM0 -b 115200
+    - Press the YUN RST button then quickly press space bar in
+      the serial console. The following should be reported:
+      ATHRS26: s26 reset done
+      eth1 up
+      eth0, eth1
+      Hit any key to stop autoboot:  0 
+      ar7240>
+
+    - Set an arbitrary, unused IP address for the Yun. Change these
+      IP addresses. They will be different for your network.
+       > setenv ipaddr 192.168.0.146;
+    - Set your tftp server address from the "ip route" reported above
+       > setenv serverip 192.168.0.4;
+
+    ! MAKE SHURE THESE MEMORY LOCATIONS ARE CORRECT !
+      !!! INCORRECT VALUES CAN CORRUPT THE U-BOOT !!!
+
+       - Flash the kernel
+          > tftpboot 0x80060000 kernel;
+          > erase 0x9fEa0000 +0x140000;
+          > cp.b $fileaddr 0x9fea0000 $filesize;
+
+       - Flash the root filesystem
+          > tftpboot 0x80060000 rootfs;
+          > erase 0x9f050000 +0xE50000;
+          > cp.b $fileaddr 0x9f050000 $filesize;
+
+ ! CAUTION! DO NOT FLASH A WORKING U-BOOT. IF YOU KNOW THE U-BOOT
+   IS CORRUPT FROM INVALID MEMORY ADDRESSES AND YOU STILL HAVE THE
+   U-BOOT PROMPT YOU MAY BE ABLE TO FLASH A GOOD U-BOOT FOLLOWING
+   THE INSTRUCTIONS HERE: DO NOT POWER OFF OR REBOOT TILL THEN.
+   http://www.arduino.cc/en/Tutorial/YunUBootReflash
+   IF THE U-BOOT IS CORRUPT AND YOU HAVE REBOOT OR RUN THE KERNEL
+   THEN YOU'LL NEED TO UNSOLIDER, REMOVE, & REPLACE THE FLASH
+   MEMORY !!! (or buy a new Yun. That Yun is now a Leonardo).
+
+    - boot kernel with u-boot command
+       > bootm 0x9fea0000;
+
+
+___________________________________________
+FACTORY RESET the WiFi router configuration
+- hold the "WLAN RST" button for 30 seconds. 
+- reset the Arduino
+
+
+____________________________________
+RE-FLASH EVERYTHING (voids warranty)
+! http://www.arduino.cc/en/Tutorial/YunUBootReflash
+$ wget http://arduino.cc/download_handler.php?f=/openwrtyun/1/YunImage_v1.5.3.zip
+   ! CAUTION! DO NOT FLASH A WORKING U-BOOT.
+     IF THE U-BOOT IS CORRUPTED YOU'LL NEED TO REMOVE/REPLACE THE FLASH MEMORY !!!
+      @ http://forum.arduino.cc/index.php?topic=287220.0
+      @ http://forum.arduino.cc/index.php?topic=287220.15
+      @ http://forum.arduino.cc/index.php?topic=287220.30
+
+
+__________________________
+See internet resources:
+   https://www.arduino.cc/en/Main/ArduinoBoardYun?from=Products.ArduinoYUN
+   http://arduino.cc/en/Guide/ArduinoYun
+   http://wiki.openwrt.org/toh/arduino/yun
+   https://github.com/arduino/openwrt-yun
+   http://fibasile.github.io/arduino-yun-custom-buildroot.html
+   http://playground.arduino.cc/Hardware/Yun
+   http://wiki.dragino.com/index.php?title=Getting_Start_with_Arduino_Yun#Upgrade_Firmware_to_devices
+
+
