@@ -50,7 +50,7 @@ core/%.asm.o: core/%.S
 
 
 upload: $(BASENAME).hex
-	/bin/stty -F /dev/ttyACM0 1200 ; sleep 1 ; avrdude -v -patmega32u4 -cavr109 -P/dev/ttyACM0 -b57600 -D -Uflash:w:$<:i
+	/bin/stty -F /dev/ttyACM0 1200 ; sleep 1 ; avrdude -p atmega32u4 -c avr109 -P /dev/ttyACM0 -b 57600 -D -U flash:w:$<:i
 	
 $(EEPROM): $(TARGET)
 	$(AVR_PATH)/avr-objcopy -O ihex -j .eeprom --set-section-flags=.eeprom=alloc,load --no-change-warnings --change-section-lma .eeprom=0  $(TARGET) $(BASENAME).eep 

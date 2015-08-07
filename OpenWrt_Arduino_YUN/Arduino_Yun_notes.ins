@@ -8,7 +8,7 @@ These notes capture procedures preformed for initial evaluations
 of the Arduino Yun.
 
  - Open a terminal window. Many of the steps in these instructions
-   will be command line entries and can be cut/paste to this
+   will be command line entries and can be copy/paste to this
    terminal window. Some of these command line steps will contain
    notes following the '#' symbol. These notes will not effect the
    command and may be included at the terminal entry.
@@ -23,7 +23,7 @@ of the Arduino Yun.
 
 ____________________________________________
 CONNECT TO Atheros WIRELESS and WIRED NETWORK
-Note: the Atheros will look and feel like a WiFi router. It uses
+Note: the Atheros will look and act like a WiFi router. It uses
 an OS built from a development system called OpenWrt. OpenWrt is
 commonly used on WiFi routers and was derived from BuildRoot.
 Atheros also uses u-boot and a linux kernel version ~ 3.3.X
@@ -40,6 +40,15 @@ Atheros also uses u-boot and a linux kernel version ~ 3.3.X
  $ ping arduino.local
  - lanch a web browser @ http://arduino.local
    first time password=arduino
+
+
+___________________________________________
+FACTORY RESET the WiFi router configuration
+ - hold the "WLAN RST" button for 30 seconds.  This will reset and
+   reconfigure the Atheros with the original factory parameters for
+   the WiFi router. This will NOT reinstall, or up/down-grade the
+   current Atheros operating system. This does not reset or change
+   the ATmega32u4 or it's microcde.
 
 
 ____________________________________________________________________
@@ -72,7 +81,7 @@ CONFIGURE ARDUINO YUN's USB-UART for Atheros console and Arduino IDE
  ? IF you dont see an Arduino USB device, verify cable & power, then
    upload ATmega32u4 microcode that provides minimum USB access
     - Type/copy this folowing command line but do NOT press enter
-       $ sudo avrdude -v -patmega32u4 -cavr109 -P/dev/ttyACM0 -b57600 -D -Uflash:w:minimum.hex:i
+       $ sudo avrdude -p atmega32u4 -c avr109 -P /dev/ttyACM0 -b 57600 -D -U flash:w:minimum.hex:i
     - Double-click the 32U4-RST button, press enter NOW, then "lsusb"
        $ lsusb | grep -i arduino
 
@@ -90,7 +99,7 @@ CONFIGURE ARDUINO YUN's USB-UART for Atheros console and Arduino IDE
    it's microUSB to the Atheros serial console. Note the 'stty'
    command prior to "avrdude" will reset the microUSB, preparing
    the ATmega32u4 for avrdude's upload of "console.hex".
- $ stty -F /dev/ttyACM0 1200 ; sleep 1 ; avrdude -v -patmega32u4 -cavr109 -P/dev/ttyACM0 -b57600 -D -Uflash:w:console.hex:i
+ $ stty -F /dev/ttyACM0 1200 ; sleep 1 ; avrdude -p atmega32u4 -c avr109 -P /dev/ttyACM0 -b 57600 -D -U flash:w:console.hex:i
 
  # Use miniterm.py to connect to the Atheros console
    Notes: If the ATmega32u4 is not providing the bridge when you
@@ -313,7 +322,7 @@ SEE http://www.arduino.cc/en/Tutorial/YunUBootReflash
 If you don't believe it read this sad story:
 http://forum.arduino.cc/index.php?topic=287220
 ###cd ~/test_arduino_yun
-###wget $REPO_URL_PATH/console.hex -O manual_build/console.hex
+###wget $REPO_URL_PATH/console.hex
 
 ###sudo apt-get install tftpd-hpa # could not get this to work!
  $ sudo apt-get install xinetd tftpd # tftp # client for testing
@@ -356,24 +365,25 @@ http://forum.arduino.cc/index.php?topic=287220
    arbitrary address to temporarily assign to the Yun.
     $ ip route
 
- $ stty -F /dev/ttyACM0 1200 ; sleep 1 ; avrdude -v -patmega32u4 -cavr109 -P/dev/ttyACM0 -b57600 -D -Uflash:w:manual_build/console.hex:i
- - open a new terminal for the serial console
-   if needed, see CONFIGURE ARDUINO YUN's USB-UART above
+ - Start a serial console connected to the Atheros u-boot
+    $ stty -F /dev/ttyACM0 1200 ; sleep 1 ; avrdude -p atmega32u4 -c avr109 -P /dev/ttyACM0 -b 57600 -D -U flash:w:console.hex:i
     $ miniterm.py --lf /dev/ttyACM0 -b 115200
     - Press the YUN RST button then quickly press space bar in
       the serial console. The following should be reported:
-      ATHRS26: s26 reset done
-      eth1 up
-      eth0, eth1
-      Hit any key to stop autoboot:  0 
-      ar7240>
+         ATHRS26: s26 reset done
+         eth1 up
+         eth0, eth1
+         Hit any key to stop autoboot:  0 
+         ar7240>
 
-    - Set an arbitrary, unused IP address for the Yun. Change these
-      IP addresses. They will be different for your network.
+ - Configure u-boot IP addresses
+   The following IP addresses will be different for your network.
+    - Set an arbitrary, unused IP address for the Yun.
        > setenv ipaddr 192.168.0.146;
-    - Set your tftp server address from the "ip route" reported above
+    - Set your tftp server address from the reported "ip route"
        > setenv serverip 192.168.0.4;
 
+ - Download and flash the kernel & rootfs
     ! MAKE SHURE THESE MEMORY LOCATIONS ARE CORRECT !
       !!! INCORRECT VALUES CAN CORRUPT THE U-BOOT !!!
 
@@ -387,34 +397,17 @@ http://forum.arduino.cc/index.php?topic=287220
           > erase 0x9f050000 +0xE50000;
           > cp.b $fileaddr 0x9f050000 $filesize;
 
- ! CAUTION! DO NOT FLASH A WORKING U-BOOT. IF YOU KNOW THE U-BOOT
-   IS CORRUPT FROM INVALID MEMORY ADDRESSES AND YOU STILL HAVE THE
-   U-BOOT PROMPT YOU MAY BE ABLE TO FLASH A GOOD U-BOOT FOLLOWING
-   THE INSTRUCTIONS HERE: DO NOT POWER OFF OR REBOOT TILL THEN.
-   http://www.arduino.cc/en/Tutorial/YunUBootReflash
-   IF THE U-BOOT IS CORRUPT AND YOU HAVE REBOOT OR RUN THE KERNEL
-   THEN YOU'LL NEED TO UNSOLIDER, REMOVE, & REPLACE THE FLASH
-   MEMORY !!! (or buy a new Yun. That Yun is now a Leonardo).
+    ! CAUTION! IF YOU KNOW THE U-BOOT IS CORRUPT FROM INVALID
+      MEMORY ADDRESSES AND YOU STILL HAVE THE U-BOOT PROMPT. DO
+      NOT POWER OFF OR REBOOT, YOU MAY BE ABLE TO FLASH A GOOD
+      U-BOOT FOLLOWING THE INSTRUCTIONS HERE:
+      http://www.arduino.cc/en/Tutorial/YunUBootReflash
+      IF THE U-BOOT IS CORRUPT AND YOU HAVE REBOOT OR RUN THE
+      KERNEL THEN YOU'LL NEED TO UNSOLIDER, REMOVE, & REPLACE THE
+      FLASH MEMORY. (or buy a new Yun. That Yun is now a Leonardo).
 
-    - boot kernel with u-boot command
-       > bootm 0x9fea0000;
-
-
-___________________________________________
-FACTORY RESET the WiFi router configuration
-- hold the "WLAN RST" button for 30 seconds. 
-- reset the Arduino
-
-
-____________________________________
-RE-FLASH EVERYTHING (voids warranty)
-! http://www.arduino.cc/en/Tutorial/YunUBootReflash
-$ wget http://arduino.cc/download_handler.php?f=/openwrtyun/1/YunImage_v1.5.3.zip
-   ! CAUTION! DO NOT FLASH A WORKING U-BOOT.
-     IF THE U-BOOT IS CORRUPTED YOU'LL NEED TO REMOVE/REPLACE THE FLASH MEMORY !!!
-      @ http://forum.arduino.cc/index.php?topic=287220.0
-      @ http://forum.arduino.cc/index.php?topic=287220.15
-      @ http://forum.arduino.cc/index.php?topic=287220.30
+ - boot kernel with u-boot command
+    > bootm 0x9fea0000;
 
 
 __________________________
@@ -426,5 +419,12 @@ See internet resources:
    http://fibasile.github.io/arduino-yun-custom-buildroot.html
    http://playground.arduino.cc/Hardware/Yun
    http://wiki.dragino.com/index.php?title=Getting_Start_with_Arduino_Yun#Upgrade_Firmware_to_devices
+   http://www.arduino.cc/en/Tutorial/YunUBootReflash
+      CAUTION! RE-FLASH EVERYTHING (voids warranty)
+      DO NOT FLASH A WORKING U-BOOT. IF THE U-BOOT IS CORRUPTED
+      YOU'LL NEED TO REMOVE/REPLACE THE FLASH MEMORY!
+         http://forum.arduino.cc/index.php?topic=287220.0
+         http://forum.arduino.cc/index.php?topic=287220.15
+         http://forum.arduino.cc/index.php?topic=287220.30
 
 

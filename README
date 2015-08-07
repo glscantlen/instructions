@@ -4,7 +4,10 @@ simple text files written in a human readable format, ending
 with a '.ins' extension. These instructions do not require a
 special program or GUI to view their content. One can view
 the '.ins' files with any text file reader, editor or simply
-'cat' the content.
+'cat' the content. I am providing this information for free,
+use at your own risk. I accept no responsibility for damages
+to you or your property that may arise from the use this
+information.
 
 The content of a '.ins' file was initially meant for taking
 notes or capturing procedures, with lots of copy-paste from
