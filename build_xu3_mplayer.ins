@@ -1,35 +1,45 @@
-___________________________________________
+_____________________________________________________
 
-Build a BuildRoot system for the Odroid-XU3.
-___________________________________________
+Build a simple media player system for the Odroid-XU3
+_____________________________________________________
 These procedures were written to be executed on an Ubuntu 14.04 x86 desktop.
-There is no requirement to preform S/W development on the Odroid-XU3 itself.
-The Odroid-XU3 will not require a previously installed system.
-The BuildRoot system will be placed onto a microSD that will boot the Odroid-XU3
-or the system can be transfered to the Odroid-XU3 remotely using Android fastboot.
-For fastboot see appended instructions: "Debug Monitor serial console instructions".
+With minor modifications they will work on other current Debian systems.
+There is no requirement to preform software development on the Odroid-XU3.
+The XU3 will not require a previously installed system. The media player
+will be installed on a microSD that will boot the Odroid-XU3. It can also
+be transfered to the Odroid-XU3 remotely using Android fastboot. Fastboot
+requires extra cabling and utilities, see appended instructions:
+"Debug Monitor serial console instructions".
+
+ - Open a terminal window. Many of the steps in these instructions
+   will be command line entries and can be copy/paste to this
+   terminal window. Some of these command line steps will contain
+   notes following the '#' symbol. These notes will not effect the
+   command and may be included at the terminal entry.
 
  $ mkdir ~/xu3_mplayer
  $ cd ~/xu3_mplayer
 
    ___________________________________________
- - Retrive the latest copy of this instruction
+ - Retrieve the latest copy of this instruction
     $ REPO_URL_PATH="https://github.com/glscantlen/instructions/raw/master/Buildroot_XU3_MPlayer"
     $ wget $REPO_URL_PATH/build_xu3_mplayer.ins -O ./build_xu3_mplayer_new.ins
 
    ___________________________________________
- - Disable Ubuntu's automount. Automount should be disabled for these instructions.
+ - Ubuntu's automount should be disabled for these instructions.
     $ gsettings set org.gnome.desktop.media-handling automount false
-    ? IF after the installation you wish to revert this setting:
+    ? IF after the installation you wish to reverse this setting:
        $ gsettings set org.gnome.desktop.media-handling automount true
 
 
    ___________________________________________
- - Insert the microSD onto the desktop system and verify it's device path.
-   The path name will be something like "/dev/sdX" or "/dev/mmcX". Replace
-   "sdX" in the following instructions with correct device name for the microSD.
-   !!! CAUTION !!! dd can destroy the contents of your mounted system disk.
-   Make sure /dev/sdX is the correct device for the microSD.
+ - Insert the microSD into the desktop system and verify it's device
+   path. The path name will be something like "/dev/sdX" or "/dev/mmcX".
+   Replace "sdX" in the following instructions with the correct device
+   name for your microSD.
+
+   !! CAUTION !! dd can destroy the contents of your desktop filesystem.
+      Make sure /dev/sdX is the correct device for the microSD.
     $ sudo partprobe
     $ cat /proc/partitions
     $ DEV_SD=/dev/sdX  # !!! make sure this is your microSD
@@ -39,13 +49,16 @@ For fastboot see appended instructions: "Debug Monitor serial console instructio
    ___________________________________________
  - Install the Development environment
     $ sudo apt-get install build-essential git ccache xz-utils openssh-server
-    ! This is a temp fix to Buildroot's mplayer. MPlayer's "configure" incorrectly uses
-      the Xorg development files on the *HOST* ! Therefore the host will need xorg-dev.
-       $ sudo apt-get install xorg-dev
+    ! Following is a temporary fix to Buildroot's mplayer. The mplayer
+      package's "configure" erroneously uses the Xorg development files
+      on the desktop *HOST* ! Therefore the host will need xorg-dev.
+    $ sudo apt-get install xorg-dev
 
-    $ wget https://releases.linaro.org/14.09/components/toolchain/binaries/gcc-linaro-arm-linux-gnueabihf-4.9-2014.09_linux.tar.xz
-    $ tar -xvJf gcc-linaro-arm-linux-gnueabihf-4.9-2014.09_linux.tar.xz
-    $ ln -s gcc-linaro-arm-linux-gnueabihf-4.9-2014.09_linux linaro-4.9
+    # Buildroot compatible, external toolchain. Release 2014.09
+    $ TOOLCHAIN="gcc-linaro-arm-linux-gnueabihf-4.9-2014.09_linux"
+    $ wget https://releases.linaro.org/14.09/components/toolchain/binaries/$TOOLCHAIN.tar.xz
+    $ sudo tar -xvJf $TOOLCHAIN.tar.xz -C /usr        # install toolchain anywhere
+    $ ln -s /usr/$TOOLCHAIN ~/xu3_mplayer/linaro-4.9  # link to installed toolchain
 
     $ export CROSS_COMPILE=~/xu3_mplayer/linaro-4.9/bin/arm-linux-gnueabihf-
     $ ls $CROSS_COMPILE*
@@ -65,7 +78,7 @@ For fastboot see appended instructions: "Debug Monitor serial console instructio
       partitioning scheme. You must build and install a custom u-boot for fastboot.
     # Note: bootloaders can be re-installed remotely with fastboot if u-boot is
       already installed and running on the odroid.
-      See appended instructions below: "Install Buildroot Remotely".
+      See appended instructions below: "Install System Remotely".
 
     - wipe the front 100M of microSD and restore an msdos MBR
        $ sudo dd if=/dev/zero of=$DEV_SD bs=512 count=200000 conv=noerror,sync
@@ -95,7 +108,7 @@ For fastboot see appended instructions: "Debug Monitor serial console instructio
        $ make odroid_config
        $ make -j$CPU_COUNT
 
-       - Install u-boot to microSD in non-tabled-partitions. Evironment was erased with previous wipe
+       - Install u-boot to microSD in non-tabled-partitions. Environment was erased with previous wipe
          ###sudo dd seek=1231  of=$DEV_SD  if=/dev/zero count=32 conv=noerror,sync # zero environment
           $ sudo dd seek=1     of=$DEV_SD  if=sd_fuse/hardkernel/bl1.bin.hardkernel
           $ sudo dd seek=31    of=$DEV_SD  if=sd_fuse/hardkernel/bl2.bin.hardkernel
@@ -150,7 +163,7 @@ For fastboot see appended instructions: "Debug Monitor serial console instructio
        $ sudo mount -t vfat $DEV_SD'1' /tmp/ODROID_BOOT
        $ sudo mount -t ext4 $DEV_SD'2' /tmp/ODROID_ROOT
 
-    ? ELSE you are going to use fastboot to remotly install a system.
+    ? ELSE you are going to use fastboot to remotely install a system.
       Create virtual file systems to hold boot and root for the remote install.
       The microSD partitioning is complete and it can be inserted into the Odroidxu3
        $ dd if=/dev/zero of=/tmp/VFS_BOOT.img bs=1 count=0 seek=$SIZEOF_DEV_SD1
@@ -263,7 +276,7 @@ For fastboot see appended instructions: "Debug Monitor serial console instructio
 
 
     # To change the default configuration for "eth0' from dynamic to static
-      see appended instuctions below "BuildRoot Menuconfig" System configuration.
+      see appended instructions below "BuildRoot Menuconfig" System configuration.
     ? IF you are using DHCP for dynamic IP Address on eth0, The default.
        - ensure Network interface using DHCP is set to 'eth0' and the
          "config_eth" script is NOT used in Custom scripts.
@@ -331,7 +344,7 @@ For fastboot see appended instructions: "Debug Monitor serial console instructio
           - Open a new terminal for the Debug console and execute miniterm.
              $ sudo miniterm.py --lf /dev/ttyUSB0 -b 115200
           - Continuing in the Debug Console terminal, insert microSD into OdroidXU3.
-            Apply power and hold down the space bar, interupting the bootloader.
+            Apply power and hold down the space bar, interrupting the bootloader.
           - At the bootloader prompt, "Exynos5422 #", enter "fastboot"
           ! Now continue on the original desktop terminal
 
@@ -372,7 +385,7 @@ For fastboot see appended instructions: "Debug Monitor serial console instructio
        > url="https://www.youtube.com/watch?v=vJpge3v0DO4"
        > youtube-dl.py.zip --no-check-certificate -q -o- $url | mplayer -fs -cache 16384  -
 
-    - To shutdow the odroid ctrl-alt-F1
+    - To shutdown the odroid ctrl-alt-F1
       ###kill -TERM $(ps aux | grep Xorg | grep -v grep | awk '{print $1}')
        > killall -TERM Xorg
        > poweroff
@@ -392,7 +405,7 @@ ___________________________________________________
  X Instructions for packaging of hello world example code is provided
    in a sibling folder, Buildroot_hello_world.
 
- X Uising gcc-linaro-arm-linux-gnueabihf-4.9-2014.09_linux binaries.
+ X Using gcc-linaro-arm-linux-gnueabihf-4.9-2014.09_linux binaries.
    This is the latest linaro toolchain that provides libstdc++.so.6.
 
  X Libmali.so will implement hardware acceleration for libEGL and libGLES.
@@ -532,7 +545,7 @@ _________________________________
                      Toolchain origin (Pre-installed toolchain)
                      ($(HOME)/xu3_mplayer/linaro-4.9) Toolchain path
 
-                 ### IF you're not using Linaro release "2014.09" then set:
+                 ### IF you're not using Linaro release "2014.09", ie "2015.02", then set:
                  ### Toolchain (Custom toolchain)
                  ### (arm-linux-gnueabihf) Toolchain prefix
                  ### External toolchain kernel headers series (3.x.x)
@@ -603,8 +616,8 @@ _________________________________________
 Connecting a desktop serial console/tty to the Odroid-XU3 Debug console
 
 If the desktop hardware does not provide an RS232
-interface you can use a USB-uart cable/adaptor.
-Ideally the module provided by Odroid is prefered:
+interface you can use a USB-uart cable/adapter.
+Ideally the module provided by Odroid is preferred:
 http://www.hardkernel.com/main/products/prdt_info.php?g_code=G134111883934
 
  ? If you do not have an Odroid USB-uart module and you are good with
@@ -678,10 +691,10 @@ ______________________________________
 
 
 
-________________________________________________
+_________________________________________________________________________
 
-Install Buildroot Remotely with Fastboot / Android tools (condensed version)
-________________________________________________
+Install System Remotely with Fastboot / Android tools (condensed version)
+_________________________________________________________________________
 Requires pre-installed bootloaders, fwbl1, bl2, u-boot.bin, and tzsw.
 See instructions above, "Install bootloaders"
 Requires pre-built Linux kernel and BuildRoot filesystem image.
@@ -719,12 +732,12 @@ See above "Build & Install BuildRoot" and "Build & Install the kernel"
     $ SIZEOF_DEV_SD2=$(expr 30849024 \* 512) #=15794700288 # 16G microSD
 
  - Hardkernel boot image
+    $ cd ~/xu3_mplayer/linux
     $ rm /tmp/VFS_BOOT.img
     $ dd if=/dev/zero of=/tmp/VFS_BOOT.img bs=1 count=0 seek=$SIZEOF_DEV_SD1 ; ls -alsh /tmp/VFS_BOOT.img
     $ mkfs.vfat /tmp/VFS_BOOT.img ; ls -alsh /tmp/VFS_BOOT.img
     $ fsck.vfat -fVv /tmp/VFS_BOOT.img # verify fat
     $ sudo mount -o loop /tmp/VFS_BOOT.img /mnt
-    $ cd ~/xu3_mplayer/linux
     $ sudo cp arch/arm/boot/zImage /mnt ;sudo sync ; ls -alsh /tmp/VFS_BOOT.img
     $ sudo cp arch/arm/boot/dts/exynos5422-odroidxu3.dtb /mnt ;sudo sync ; ls -alsh /tmp/VFS_BOOT.img
     $ sudo wget $REPO_URL_PATH/boot.ini -O /mnt/boot.ini
@@ -732,6 +745,7 @@ See above "Build & Install BuildRoot" and "Build & Install the kernel"
     $ sudo fastboot flash fat /tmp/VFS_BOOT.img
 
  - Buildroot root image
+    $ cd ~/xu3_mplayer/buildroot-2015.05
     $ rm /tmp/VFS_ROOT.img
     $ dd if=/dev/zero of=/tmp/VFS_ROOT.img bs=1 count=0 seek=$SIZEOF_DEV_SD2 ; ls -alsh /tmp/VFS_ROOT.img
     $ mkfs.ext4 -O ^has_journal -U e139ce78-9841-40fe-8823-96a304a09859 /tmp/VFS_ROOT.img ; ls -alsh /tmp/VFS_ROOT.img
@@ -739,17 +753,44 @@ See above "Build & Install BuildRoot" and "Build & Install the kernel"
     $ fsck.ext4 -fv /tmp/VFS_ROOT.img # verify ext4 no journal and UUID
     $ tune2fs -l /tmp/VFS_ROOT.img | grep -E 'features|UUID'
     $ sudo mount -o loop /tmp/VFS_ROOT.img /mnt
-    $ cd ~/xu3_mplayer/buildroot-2015.05
     $ sudo tar -xvf output/images/rootfs.tar -C /mnt ; sudo sync ; ls -alsh /tmp/VFS_ROOT.img
-    $ sudo make ARCH=arm CROSS_COMPILE=~/xu3_mplayer/linaro-4.9/bin/arm-linux-gnueabihf- INSTALL_MOD_PATH=/mnt -C ../linux modules_install
+    $ sudo make ARCH=arm CROSS_COMPILE=../linaro-4.9/bin/arm-linux-gnueabihf- INSTALL_MOD_PATH=/mnt -C ../linux modules_install
     $ sudo umount /mnt ; ls -alsh /tmp/VFS_ROOT.img
     $ img2simg /tmp/VFS_ROOT.img /tmp/VFS_ROOT.simg ; ls -alsh /tmp/VFS_ROOT.*
     $ sudo fastboot flash system /tmp/VFS_ROOT.simg
 
  $ sudo fastboot reboot
- ! DO NOT "fastboot flash" boot, kernel, ramdisk, userdata, or cache. These
-   images are specific to Android and may over-write Buildroot partitions.
 
+ ! DO NOT "fastboot flash" boot, kernel, ramdisk, userdata, or cache. These
+   images are specific to Android and will over-write installed partitions.
+
+
+
+
+
+________________________________________________
+
+Cleaning Buildroot
+________________________________________________
+Buildroot may need cleaned and rebuilt if configurations are changed.
+There are several different degrees of cleaning avalible, dependent on
+what's been changed.
+
+    * As an example, in the appended instructions, "Create ARMSOC xdriver"
+      there are ways to clean individual packages "make <package>-dirclean",
+      "make <package>-reinstall", then "make".
+    * If you change the config_eth script and want to test a rebuild then
+      all that is needed is "rm output/build/.root" then "make"
+    * "make clean" will clean all packages requireing rebuild of everything
+      on the next "make".
+    * "make distclean" will clean all packages, reset the configuration,
+      and remove all downloads. This is the cleanest of cleans, yet it
+      will leave the system/skeleton entact.
+    * Notice that some cleans may cause a download of newer packages
+      introducing unexpected anomilies. One way to force a download
+      of the latest package version is to remove the build and archive.
+      rm -rf output/build/<package><version>
+      rm dl/<package><version>.tar.gz
 
 
 
@@ -761,52 +802,47 @@ Install pre-built libmali.so
 ________________________________________________
 This appended instruction will be removed when proper config/build/install procedures
 are created for the main instructions. It is provided now for convenience and testing.
-You will need a download of the Hardkernel recovery image for Ubuntu or, preferably,
-a recently updated/bootable Hardkernel Ubuntu system on microSD. Hardkernel Ubuntu
-will be used as a source for copying the missing stdc++ and graphic libraries.
 
- $ cd ~/xu3_mplayer/buildroot-2015.05
+ $ cd ~/xu3_mplayer
 
- ? IF you are using a microSD with an install of Hardkernel's Ubuntu
-   then mount it's root filesystem to /mnt
-    $ DEV_SD=/dev/sdX  # !!! make sure this is your microSD
-    $ sudo mount $DEV_SD'2' /mnt
+ $ wget http://malideveloper.arm.com/downloads/drivers/binary/r5p0-06rel0/mali-t62x_r5p0-06rel0_linux_1+x11.tar.gz
+ $ mkdir mali-t62x_r5p0-06rel0_linux_1+x11
+ $ tar -xvf mali-t62x_r5p0-06rel0_linux_1+x11.tar.gz -C mali-t62x_r5p0-06rel0_linux_1+x11
 
- ? ELSE IF you'll be using a Hardkernel Ubuntu system image and mount it's root filesystem.
-   Ex. download image: ubuntu-15.04-mate-odroid-xu3-20150528.img from dn.odroid.com
-    $ ODROID_IMG=_______________________ # enter path & filename to the image
-      such-as: ~/xu3_mplayer/ubuntu-15.04-mate-odroid-xu3-20150528.img
-    $ parted $ODROID_IMG unit B print | grep -E "ext|Start"
-    $ ROOT_START=________ # enter the "Start" of ext partition ie 135266304
-    $ sudo mount -o loop,ro,offset=$ROOT_START $ODROID_IMG /mnt
-
- ? ELSE you can use pre-built binaries from other sources
-    $ wget http://releases.linaro.org/14.11/components/toolchain/binaries/arm-linux-gnueabihf/sysroot-linaro-eglibc-gcc4.9-2014.11-arm-linux-gnueabihf.tar.xz
-    $ wget http://malideveloper.arm.com/downloads/drivers/binary/r5p0-06rel0/mali-t62x_r5p0-06rel0_linux_1+x11.tar.gz
-
- - Copy and verify the libmali, libGL/ES/EGL libraries
-    $ cp -a /mnt/usr/lib/arm-linux-gnueabihf/libstdc++.so.6* system/skeleton/usr/lib/
-    $ cp -a /mnt/usr/lib/arm-linux-gnueabihf/mali-egl/* system/skeleton/usr/lib/
-    $ sudo umount /mnt
-    $ rm system/skeleton/usr/lib/ld.so.conf 
-    $ ls -als output/target/usr/lib/* | grep -E "mali|GL"
+ $ cd buildroot-2015.05
+ - Copy link and verify the libmali, libGL/ES/EGL libraries
+    $ cp -a ../mali-t62x_r5p0-06rel0_linux_1+x11/x11/libmali.so system/skeleton/usr/lib/libmali_x11.so
+    $ ln -s libmali_x11.so system/skeleton/usr/lib/libmali.so
+    $ ln -s libmali.so system/skeleton/usr/lib/libGLESv2.so
+    $ ln -s libmali.so system/skeleton/usr/lib/libGLESv2.so.2
+    $ ln -s libmali.so system/skeleton/usr/lib/libGLESv1_CM.so
+    $ ln -s libmali.so system/skeleton/usr/lib/libGLESv1_CM.so.1
+    $ ln -s libmali.so system/skeleton/usr/lib/libEGL.so
+    $ ln -s libmali.so system/skeleton/usr/lib/libEGL.so.1
+    $ ln -s libmali.so system/skeleton/usr/lib/libOpenCL.so
+    $ ln -s libmali.so system/skeleton/usr/lib/libOpenCL.so.1
 
  ? IF you need to list dynamically linked dependencies for executables and other libraries:
-    - You can list target executsbles from the host using arm-linux-gnueabihf-objdump
-       $ ../linaro-4.9/bin/arm-linux-gnueabihf-objdump -x output/target/system/skeleton/usr/lib/libmali.so | grep NEEDED
-    - And you can copy the "ldd" script to the Odroid's root filesystem.
-       $ cp -a /mnt/usr/bin/ldd buildroot-2015.05/system/skeleton/usr/bin/
-       # Edit the script, change "/bin/bash" to "/bin/sh".
-       $ nano -w buildroot-2015.05/system/skeleton/usr/bin/ldd
-         #! /bin/sh
-         ...
-       # Then, after booting the Odroid execute the script from it's command line
-       > ldd /usr/lib/libmali.so
+    - You can list target executables from the host using arm-linux-gnueabihf-objdump
+       $ ../linaro-4.9/bin/arm-linux-gnueabihf-objdump -x system/skeleton/usr/lib/libmali.so | grep NEEDED
+    - And you can download an "ldd" script to the Odroid's build
+       $ REPO_URL_PATH="https://github.com/glscantlen/instructions/raw/master/Buildroot_XU3_MPlayer"
+       $ sudo wget $REPO_URL_PATH/usr.bin.ldd -O system/skeleton/usr/bin/ldd
 
  $ rm output/build/.root 
  $ make
  - Now re-install the root image to the microSD
    or use fastboot from "- Buildroot root image" above
+
+   ___________________________
+ - Frame buffer version TBD
+   ###wget http://malideveloper.arm.com/downloads/drivers/binary/r5p0-06rel0/mali-t62x_r5p0-06rel0_linux_1+fbdev.tar.gz
+   ###mkdir mali-t62x_r5p0-06rel0_linux_1+fbdev
+   ###tar -xvf mali-t62x_r5p0-06rel0_linux_1+fbdev.tar.gz -C mali-t62x_r5p0-06rel0_linux_1+fbdev
+   ###cd buildroot-2015.05
+   ###cp -a ../mali-t62x_r5p0-06rel0_linux_1+fbdev/fbdev/libmali.so system/skeleton/usr/lib/libmali_fbdev.so
+   ###unlink system/skeleton/usr/lib/libmali.so
+   ###ln -s libmali_fbdev.so system/skeleton/usr/lib/libmali.so
 
 
 
