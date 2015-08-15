@@ -131,11 +131,15 @@ Simplified work-flow for GIT with branch = "master"
  ? IF you are behind then merge changes and fix any conflicts
     $ git merge origin/master
 
-    ? IF merge failed; fix conflicts and commit the fixes
+    ? IF merge failed and conficts will be fixed,
        - Edit the files that conflict
          <<<<<<< HEAD  # shows your previous commits that conflict
          >>>>>>> origin/master # shows changes on the server
        $ git commit -a 
+
+    ? ELSE if merge failed and you don't "commit"
+      then you should back out of the merge
+       $ git merge --abort
 
  $ git push -u origin master
     ? IF push still fails then changes were probably made while
