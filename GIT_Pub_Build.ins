@@ -123,12 +123,22 @@ Simplified work-flow for GIT with branch = "master"
  ! many local commits can be made before you push to server
 
  - look for others' changes on the server, branch "master"
-    $ git fetch origin master
-      others' changes = 22b9cb7..747055d  master     -> origin/master
+    $ git fetch origin master # note others' changes 6f9c8e0..
+       * branch            master     -> FETCH_HEAD
+         6f9c8e0..4534c41  master     -> origin/master
     $ git log master..origin/master
     $ git diff master origin/master # show what's changed
 
- ? IF you are behind then merge changes and fix any conflicts
+ $ git status
+ 
+ ? IF "Your branch is behind" and NOT "ahead"; pull others' changes
+    $ git pull origin master
+
+ ? ELSE IF "Your branch is ahead" and NOT "behind"; push your changes
+    $ git pull origin master
+
+ ? ELSE IF "Your branch is behind" and also "ahead" then merge others'
+   changes with yours, fix any conflicts, and push the merger
     $ git merge origin/master
 
     ? IF merge failed; fix conflicts and commit the fixes
@@ -136,10 +146,11 @@ Simplified work-flow for GIT with branch = "master"
          <<<<<<< HEAD  # shows your previous commits that conflict
          >>>>>>> origin/master # shows changes on the server
        $ git commit -a 
+       - go back and try merge again
 
- $ git push -u origin master
-    ? IF push still fails then changes were probably made while
-      you were fixing your conficts. Go back to "git fetch origin"
+    $ git push origin master
+       ? IF push still fails then changes were probably made while
+         you were fixing your conficts. Go back to "git fetch origin"
 
 
 
