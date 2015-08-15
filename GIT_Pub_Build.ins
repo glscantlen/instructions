@@ -131,13 +131,13 @@ Simplified work-flow for GIT with branch = "master"
 
  $ git status
  
- ? IF "Your branch is behind" and NOT "ahead"; pull others' changes
+ ? IF "Your branch is behind" and NOT "diverged"; pull others' changes
     $ git pull origin master
 
- ? ELSE IF "Your branch is ahead" and NOT "behind"; push your changes
-    $ git pull origin master
+ ? ELSE IF "Your branch is ahead" and NOT "diverged"; push your changes
+    $ git push origin master
 
- ? ELSE IF "Your branch is behind" and also "ahead" then merge others'
+ ? ELSE IF "Your branch and 'others' have diverged"; merge others'
    changes with yours, fix any conflicts, and push the merger
     $ git merge origin/master
 
