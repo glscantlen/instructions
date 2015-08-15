@@ -53,35 +53,40 @@ will configure the servers to maintain and publish repositories.
 
 
  - Continuing from a development system, NOT the server
-    - add the server name to all development systems' /etc/hosts
+ 
+    - Add the server name to all development systems' /etc/hosts
        $ sudo nano -w /etc/hosts # add/edit entry for giterdone
          192.168.0.254   giterdone
 
-    - Add a development system's user to the server and repo group
-       $ ssh giterdone@giterdone
-       $ su -c 'useradd glscantlen'
+    # ssh to giterdone as the repo admin then login as root, 
+      because most web servers should block root ssh
+    $ ssh giterdone@giterdone
+    $ su -
+
+    - Add this development system's username to the server, the
+      repo group, and the secure web pages
+       $ useradd glscantlen
          password _________
        $ usermod -a -G giterdone glscantlen
-    - Add this user to the secure web pages
        $ htpasswd -c /etc/httpd/conf/.htpasswd glscantlen
          New password: _________
+       # add this username to the "require user" list
+       $ nano -w /var/www/html/LinuxDocs/.htaccess
+         ...
+         require user glscantlen mpayne frankk dbaird
+         ...
 
-      ###/etc/init.d/httpd reload
-       - Check who's loging in
-         ###less /var/log/httpd/access_log
-         ###less /var/log/httpd/error_log
-         ###less /var/log/httpd/ssl_access_log 
-         ###less /var/log/httpd/ssl_error_log
-         ###less /var/log/httpd/ssl_request_log 
-         ###less /var/log/audit/audit.log 
-         ###less /var/log/secure
+    ? IF your web server needs to reload with the new user ?
+       $ /etc/init.d/httpd reload
 
+    $ exit # from root login
     $ exit # from ssh giterdone
 
-    - GIT the repo, GLSLinuxDocs, for glscantlen from giterdone.
-      Make the initial commit to your GLSLinuxDocs then push it to the server
+    ? IF you initialized an empty repository for this developer then make
+      an initial commit to the empty repository and push to the server.
       See man git-clone, git-add, git-commit, git-push
       ###... TBD ... Install GIT and config global name-email
+       # GIT the repo, GLSLinuxDocs, for glscantlen from giterdone.
        $ git clone ssh://glscantlen@giterdone/home/giterdone/GLSLinuxDocs.git
          warning: You appear to have cloned an empty repository.
        $ cd GLSLinuxDocs
@@ -93,7 +98,10 @@ will configure the servers to maintain and publish repositories.
        $ git push -u origin master
        $ git branch -a
        $ git remote show origin
-       - Browser @ http://giterdone/LinuxDocs
+
+
+ - Open a browser from any development system and enter a published repo URL.
+   http://giterdone/LinuxDocs
 
 
 
@@ -133,6 +141,17 @@ Simplified work-flow for GIT with branch = "master"
     ? IF push still fails then changes were probably made while
       you were fixing your conficts. Go back to "git fetch origin"
 
+
+
+_______________________________________
+Where to check logins on the web server
+ $ less /var/log/httpd/access_log
+ $ less /var/log/httpd/error_log
+ $ less /var/log/httpd/ssl_access_log 
+ $ less /var/log/httpd/ssl_error_log
+ $ less /var/log/httpd/ssl_request_log 
+ $ less /var/log/audit/audit.log 
+ $ less /var/log/secure
 
 
 
