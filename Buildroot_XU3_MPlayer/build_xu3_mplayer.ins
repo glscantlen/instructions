@@ -152,13 +152,13 @@ requires extra cabling and utilities, see appended instructions:
     ? IF you are NOT going to use fastboot for remote installs
       then you will be installing directly onto a local microSD
        $ sudo mkfs.vfat $DEV_SD'1'
-       $ sudo mkfs.ext4 -O ^has_journal -U e139ce78-9841-40fe-8823-96a304a09859 $DEV_SD'2'
+       $ sudo mkfs.ext4 -O ^has_journal $DEV_SD'2'
        $ sudo sync
        $ sudo partprobe
        $ cat /proc/partitions
        $ sudo fsck.vfat -fv $DEV_SD'1' # verify fat
        $ sudo fsck.ext4 -fv $DEV_SD'2' # verify ext4 no journal
-       $ sudo tune2fs -l $DEV_SD'2' | grep -E 'features|UUID'
+       $ sudo tune2fs -l $DEV_SD'2' | grep features
 
        $ sudo mount -t vfat $DEV_SD'1' /tmp/ODROID_BOOT
        $ sudo mount -t ext4 $DEV_SD'2' /tmp/ODROID_ROOT
@@ -169,11 +169,11 @@ requires extra cabling and utilities, see appended instructions:
        $ dd if=/dev/zero of=/tmp/VFS_BOOT.img bs=1 count=0 seek=$SIZEOF_DEV_SD1
        $ dd if=/dev/zero of=/tmp/VFS_ROOT.img bs=1 count=0 seek=$SIZEOF_DEV_SD2
        $ mkfs.vfat /tmp/VFS_BOOT.img
-       $ mkfs.ext4 -O ^has_journal -U e139ce78-9841-40fe-8823-96a304a09859 /tmp/VFS_ROOT.img
+       $ mkfs.ext4 -O ^has_journal /tmp/VFS_ROOT.img
          Warning: Not a block special device. Proceed anyway? (y,n) y
        $ fsck.vfat -fv /tmp/VFS_BOOT.img # verify fat
-       $ fsck.ext4 -fv /tmp/VFS_ROOT.img # verify ext4 no journal and UUID
-       $ tune2fs -l /tmp/VFS_ROOT.img | grep -E 'features|UUID'
+       $ fsck.ext4 -fv /tmp/VFS_ROOT.img # verify ext4 no journal
+       $ tune2fs -l /tmp/VFS_ROOT.img | grep features
 
        $ sudo mount -t vfat -o loop /tmp/VFS_BOOT.img /tmp/ODROID_BOOT
        $ sudo mount -t ext4 -o loop /tmp/VFS_ROOT.img /tmp/ODROID_ROOT
@@ -208,14 +208,14 @@ requires extra cabling and utilities, see appended instructions:
          ODROIDXU-UBOOT-CONFIG
          #setenv bootdelay "5"
          setenv fdt_high "0xffffffff"
-         setenv bootrootfs "console=tty1 console=ttySAC2,115200n8 root=UUID=e139ce78-9841-40fe-8823-96a304a09859 rootwait ro"
+         setenv kconsole "console=ttySAC2,115200n8"
          setenv videoconfig "drm_kms_helper.edid_firmware=edid/1920x1080.bin"
          setenv smsmacaddr "smsc95xx.macaddr=00:1e:06:61:7a:39"
-         setenv mmcrootdev "root=/dev/mmcblk0p2 rw"
-         setenv mmcrootfstype "rootfstype=ext4 rootwait"
+         setenv mmcrootdev "root=/dev/mmcblk0p2 rootwait rw"
+         setenv mmcrootfstype "rootfstype=ext4"
          setenv governor "governor=performance"
          #setenv debugdrivers "s5p_mfc.debug=10"
-         setenv bootargs "${bootrootfs} ${videoconfig} ${smsmacaddr} ${mmcrootdev} ${mmcrootfstype} ${governor} ${debugdrivers}"
+         setenv bootargs "${kconsole} ${mmcrootdev} ${mmcrootfstype} ${videoconfig} ${smsmacaddr} ${governor} ${debugdrivers}"
          setenv bootcmd "fatload mmc 0:1 0x40008000 zImage; fatload mmc 0:1 0x42000000 exynos5422-odroidxu3.dtb; bootz 0x40008000 - 0x42000000"
          boot
 
@@ -748,10 +748,10 @@ See above "Build & Install BuildRoot" and "Build & Install the kernel"
     $ cd ~/xu3_mplayer/buildroot-2015.05
     $ rm /tmp/VFS_ROOT.img
     $ dd if=/dev/zero of=/tmp/VFS_ROOT.img bs=1 count=0 seek=$SIZEOF_DEV_SD2 ; ls -alsh /tmp/VFS_ROOT.img
-    $ mkfs.ext4 -O ^has_journal -U e139ce78-9841-40fe-8823-96a304a09859 /tmp/VFS_ROOT.img ; ls -alsh /tmp/VFS_ROOT.img
+    $ mkfs.ext4 -O ^has_journal /tmp/VFS_ROOT.img ; ls -alsh /tmp/VFS_ROOT.img
       Warning: Not a block special device. Proceed anyway? (y,n) y
-    $ fsck.ext4 -fv /tmp/VFS_ROOT.img # verify ext4 no journal and UUID
-    $ tune2fs -l /tmp/VFS_ROOT.img | grep -E 'features|UUID'
+    $ fsck.ext4 -fv /tmp/VFS_ROOT.img # verify ext4 no journal
+    $ tune2fs -l /tmp/VFS_ROOT.img | grep features
     $ sudo mount -o loop /tmp/VFS_ROOT.img /mnt
     $ sudo tar -xvf output/images/rootfs.tar -C /mnt ; sudo sync ; ls -alsh /tmp/VFS_ROOT.img
     $ sudo make ARCH=arm CROSS_COMPILE=../linaro-4.9/bin/arm-linux-gnueabihf- INSTALL_MOD_PATH=/mnt -C ../linux modules_install
