@@ -96,8 +96,11 @@ requires extra cabling and utilities, see appended instructions:
       ###CPU_COUNT=$(grep processor /proc/cpuinfo | awk '{count=$NF};END{print count+1}')
       ###export CROSS_COMPILE=~/xu3_mplayer/linaro-4.9/bin/arm-linux-gnueabihf-
 
+       # Note commit 300e640c... newer commit will break autoboot interrupt
+       $ git checkout 300e640cfdcb7b6a5d1ca829d1f2b81c18f61b10
+
        # For a faster flash with fastboot, skip erasing the partitions.
-         Edit file "cmd_fastboot.c", use 'ctrl-_' to goto line 593.
+         Edit file "cmd_fastboot.c", use 'ctrl-_' to goto aprox. line 597
          also See appendex "Patch u-boot"
        $ nano -w common/cmd_fastboot.c
          ...
@@ -190,6 +193,10 @@ requires extra cabling and utilities, see appended instructions:
     - GIT the kernel source and build
        $ git clone --single-branch https://github.com/hardkernel/linux.git -b odroidxu3-3.10.y
        $ cd linux
+
+       # Note commit ee1b001... newer commits appear to have timming issues
+         with mplayer. Sometimes cause lock-up when <ESC>ing out of mplayer
+       $ git checkout ee1b0014142ad679f936318b412feb4832636d7a
 
        $ make odroidxu3_defconfig
        $ make -j$CPU_COUNT zImage
