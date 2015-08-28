@@ -55,9 +55,10 @@ requires extra cabling and utilities, see appended instructions:
     $ sudo apt-get install xorg-dev
 
     # Buildroot compatible, external toolchain. Release 2014.09
-    $ TOOLCHAIN="gcc-linaro-arm-linux-gnueabihf-4.9-2014.09_linux"
+    $ export TOOLCHAIN="gcc-linaro-arm-linux-gnueabihf-4.9-2014.09_linux"
     $ wget https://releases.linaro.org/14.09/components/toolchain/binaries/$TOOLCHAIN.tar.xz
-    $ sudo tar -xvJf $TOOLCHAIN.tar.xz -C /usr        # install toolchain anywhere
+    $ sudo -E tar -xvJf $TOOLCHAIN.tar.xz -C /usr        # install toolchain anywhere
+    $ unlink ~/xu3_mplayer/linaro-4.9
     $ ln -s /usr/$TOOLCHAIN ~/xu3_mplayer/linaro-4.9  # link to installed toolchain
 
     $ export CROSS_COMPILE=~/xu3_mplayer/linaro-4.9/bin/arm-linux-gnueabihf-
