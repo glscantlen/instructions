@@ -12,4 +12,14 @@ the Odroid-XU3 remotely. There is no requirement to preform software
 development on the Odroid-XU3 itself. The Odroid-XU3 will not require
 a previously installed system.
 
+*******************************************************************
+
+ NOTICE: FUTURE DEVELOPMENT OF THIS INSTRUCTION WILL BE LIMITED.
+         DUE TO THE LIMITATIONS OF SUBMODULES IT WAS DECIDED
+         TO MOVE THESE INSTRUCTIONS TO A DEDICATED REPOSITORY.
+         THE NEW INSTRUCTION REPOSITORY FOR XU3_MPLAYER WILL BE
+         LOCATED AT:
+         https://github.com/glscantlen/Buildroot_XU3_MPlayer_ins
+
+*******************************************************************
 
