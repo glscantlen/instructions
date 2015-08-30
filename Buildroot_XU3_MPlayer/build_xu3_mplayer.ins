@@ -57,9 +57,13 @@ requires extra cabling and utilities, see appended instructions:
     # Buildroot compatible, external toolchain. Release 2014.09
     $ export TOOLCHAIN="gcc-linaro-arm-linux-gnueabihf-4.9-2014.09_linux"
     $ wget https://releases.linaro.org/14.09/components/toolchain/binaries/$TOOLCHAIN.tar.xz
-    $ sudo -E tar -xvJf $TOOLCHAIN.tar.xz -C /usr        # install toolchain anywhere
-    $ unlink ~/xu3_mplayer/linaro-4.9
+    $ sudo -E tar -xvJf $TOOLCHAIN.tar.xz -C /usr     # install toolchain anywhere
     $ ln -s /usr/$TOOLCHAIN ~/xu3_mplayer/linaro-4.9  # link to installed toolchain
+
+    # The Linaro-4.9 rel.2014.09 toolchain is built for i386.
+      The following steps will install required i386 libraries.
+       $ sudo apt-get install g++-multilib
+       $ sudo apt-get install zlib1g:i386
 
     $ export CROSS_COMPILE=~/xu3_mplayer/linaro-4.9/bin/arm-linux-gnueabihf-
     $ ls $CROSS_COMPILE*
@@ -108,6 +112,7 @@ requires extra cabling and utilities, see appended instructions:
             if (0)/*(bl_cnt>>10)*/
          ...
 
+       $ make distclean  # just in case
        $ grep -E "Target|odroid" boards.cfg
        $ make odroid_config
        $ make -j$CPU_COUNT
@@ -188,7 +193,7 @@ requires extra cabling and utilities, see appended instructions:
    ###CPU_COUNT=$(grep processor /proc/cpuinfo | awk '{count=$NF};END{print count+1}')
    ###export ARCH=arm
    ###export CROSS_COMPILE=~/xu3_mplayer/linaro-4.9/bin/arm-linux-gnueabihf-
-   ###sudo mount ____$DEV_SD'1'___OR___-o loop /tmp/VFS_BOOT.img____ /tmp/ODROID_BOOT
+   ###Verify /tmp/ODROID_BOOT is mounted to  $DEV_SD'1'  OR  -o loop /tmp/VFS_BOOT.img
    ###cd ~/xu3_mplayer
 
     - GIT the kernel source and build
@@ -210,7 +215,7 @@ requires extra cabling and utilities, see appended instructions:
        $ sudo cp arch/arm/boot/dts/exynos5422-odroidxu3.dtb /tmp/ODROID_BOOT/
 
     ? IF you want to download a pre-written boot.ini
-       $ wget $REPO_URL_PATH/boot.ini -O /tmp/ODROID_BOOT/boot.ini
+       $ sudo wget $REPO_URL_PATH/boot.ini -O /tmp/ODROID_BOOT/boot.ini
     ? ELSE you can add this as your boot.ini
        $ sudo nano -w /tmp/ODROID_BOOT/boot.ini
          ODROIDXU-UBOOT-CONFIG
@@ -235,7 +240,7 @@ requires extra cabling and utilities, see appended instructions:
  - Build & Install BuildRoot system
    ###REPO_URL_PATH="https://github.com/glscantlen/instructions/raw/master/Buildroot_XU3_MPlayer"
    ###CPU_COUNT=$(grep processor /proc/cpuinfo | awk '{count=$NF};END{print count+1}')
-   ###sudo mount ____$DEV_SD'2'___OR___-o loop /tmp/VFS_ROOT.img____ /tmp/ODROID_ROOT
+   ###Verify /tmp/ODROID_ROOT is mounted to  $DEV_SD'2'  OR  -o loop /tmp/VFS_ROOT.img
    ###cd ~/xu3_mplayer
 
     $ wget http://git.buildroot.net/buildroot/snapshot/buildroot-2015.05.tar.bz2
@@ -285,7 +290,7 @@ requires extra cabling and utilities, see appended instructions:
 
     # To change the default configuration for "eth0' from dynamic to static
       see appended instructions below "BuildRoot Menuconfig" System configuration.
-    ? IF you are using DHCP for dynamic IP Address on eth0, The default.
+    ? IF you are using DHCP for dynamic IP Address on eth0, the default.
        - ensure Network interface using DHCP is set to 'eth0' and the
          "config_eth" script is NOT used in Custom scripts.
     ? ELSE you are using a static IP. Add this "config_eth" script
@@ -338,6 +343,7 @@ requires extra cabling and utilities, see appended instructions:
    _______________________________________________
  - Remote install, cleanup & test
    ###cd ~/xu3_mplayer
+
     $ sudo umount /tmp/ODROID_?OOT 
 
     ? IF you are NOT remotely installing root and boot then you have completed the
@@ -388,9 +394,10 @@ requires extra cabling and utilities, see appended instructions:
        > mplayer video.mp4
 
        > mplayer -cache 8192 http://docs.gstreamer.com/media/sintel_trailer-480p.webm
-       > url="http://www.youtube.com/watch?v=gr-mt1P94cQ"
+       > url="https://www.youtube.com/watch?v=XGBZs7PzSbI"
        > youtube-dl.py.zip --no-check-certificate -q -o- $url | mplayer -cache 8192  -
-       > url="https://www.youtube.com/watch?v=vJpge3v0DO4"
+       > url="https://www.youtube.com/watch?v=ej3ioOneTy8"
+       ! Caution running full screen using '-fs'
        > youtube-dl.py.zip --no-check-certificate -q -o- $url | mplayer -fs -cache 16384  -
 
     - To shutdown the odroid ctrl-alt-F1
