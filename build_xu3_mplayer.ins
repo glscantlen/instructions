@@ -355,10 +355,10 @@ requires extra cabling and utilities, see appended instructions:
        - Start fastboot on the odroid:
           - connect the OdroidXU3 to the development system with
             a microUSB cable and the Debug console cable
-          - Open a new terminal for the Debug console and execute miniterm.
-             $ sudo miniterm.py --lf /dev/ttyUSB0 -b 115200
-          - Continuing in the Debug Console terminal, insert microSD into OdroidXU3.
-            Apply power and hold down the space bar, interrupting the bootloader.
+          - Open a new terminal and use "minicom" for a serial console.
+             $ sudo minicom
+          - Continuing in the Serial Console terminal, insert microSD into OdroidXU3.
+            Apply power and hold down the "Enter" key, interrupting the bootloader.
           - At the bootloader prompt, "Exynos5422 #", enter "fastboot"
           ! Now continue on the original desktop terminal
 
@@ -669,15 +669,14 @@ http://www.hardkernel.com/main/products/prdt_info.php?g_code=G134111883934
 
  - With the host's serial port connected to the Odroid Debug console
    open a new terminal window for this console, and execute:
-    $ dmesg | grep tty
-      select the tty serial port for the Odroid-XU3 debug console
-    $ DEBUG_TTY=/dev/ttyUSB0  # notice this is a USB-uart cable
-    ? IF you're using minicom for a serial console
-       $ sudo minicom -D $DEBUG_TTY -b 115200 -s
-          - disable Hardware Flow Control :
-            select "Serial port setup", "F", <enter>, "exit"
-    ? OR you're using miniterm.py
-       $ sudo miniterm.py --lf $DEBUG_TTY -b 115200
+    $ dmesg | grep -E "tty|serial"
+    # Select the tty serial port for the Odroid-XU3 debug console.
+      Enter it into the configuration file as follows. Note 'ttyUSB0'
+      is an example for a USB-uart cable.
+    $ sudo nano -w /etc/minicom/minirc.dfl
+      pu port             /dev/ttyUSB0
+      pu rtscts           No
+    $ sudo minicom
 
     - boot the Odroid then test the console
       Execute in the console terminal:
@@ -723,10 +722,10 @@ See above "Build & Install BuildRoot" and "Build & Install the kernel"
  - Start fastboot on the odroid:
     - connect the OdroidXU3 to the development system with a microUSB cable
       and the Debug console cable. see Debug Monitor instructions above
-    - Open a new terminal for the Debug console and execute miniterm.
-       $ sudo miniterm.py --lf /dev/ttyUSB0 -b 115200
-    - Continuing in the Debug Console terminal, insert microSD into OdroidXU3.
-      Apply power and hold down the space bar, interrupting the bootloader.
+    - Open a new terminal and use "minicom" for a serial console.
+       $ sudo minicom
+    - Continuing in the Serial Console terminal, insert microSD into OdroidXU3.
+      Apply power and hold down the "Enter" key, interrupting the bootloader.
     - At the bootloader prompt, "Exynos5422 #", enter "fdisk -p 0".
       These partition sizes will be needed later.
     - now enter "fastboot" and continue on the original desktop terminal
