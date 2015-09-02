@@ -79,8 +79,6 @@ requires extra cabling and utilities, see appended instructions:
     $ git clone https://github.com/hardkernel/u-boot.git -b odroidxu3-v2012.07
     $ cd u-boot
 
-    ! Notice: There is no Pre-built u-boot.bin with a fastboot that supports this
-      partitioning scheme. You must build and install a custom u-boot for fastboot.
     # Note: bootloaders can be re-installed remotely with fastboot if u-boot is
       already installed and running on the odroid.
       See appended instructions below: "Install System Remotely".
@@ -91,21 +89,15 @@ requires extra cabling and utilities, see appended instructions:
        ! Note: mklabel alone will erase the non-tabled-partitions (fused blobs)
 
     ? IF you want to install hardkernel's Pre-built bootloaders onto the microSD
-      and you do NOT wish to use fastboot to remotely flash partitions then:
-      ###chmod +x sd_fuse/hardkernel/sd_fusing.sh
        $ cd sd_fuse/hardkernel/
        $ sudo ./sd_fusing.sh $DEV_SD
 
     ? ELSE you can build and install a custom u-boot on the microSD
-      and you may use fastboot to remotely flash partitions onto the Odroid:
       ###CPU_COUNT=$(grep processor /proc/cpuinfo | awk '{count=$NF};END{print count+1}')
       ###export CROSS_COMPILE=~/xu3_mplayer/linaro-4.9/bin/arm-linux-gnueabihf-
 
-       # Note commit 300e640c... newer commit will break autoboot interrupt
-       $ git checkout 300e640cfdcb7b6a5d1ca829d1f2b81c18f61b10
-
-       # For a faster flash with fastboot, skip erasing the partitions.
-         Edit file "cmd_fastboot.c", use 'ctrl-_' to goto aprox. line 597
+       # For a faster system flash, skip erasing the partitions. Edit
+         file "cmd_fastboot.c", use 'ctrl-_' to goto aprox. line 597
          also See appendex "Patch u-boot"
        $ nano -w common/cmd_fastboot.c
          ...
@@ -117,8 +109,7 @@ requires extra cabling and utilities, see appended instructions:
        $ make odroid_config
        $ make -j$CPU_COUNT
 
-       - Install u-boot to microSD in non-tabled-partitions. Environment was erased with previous wipe
-         ###sudo dd seek=1231  of=$DEV_SD  if=/dev/zero count=32 conv=noerror,sync # zero environment
+       - Install u-boot to microSD in non-tabled-partitions.
           $ sudo dd seek=1     of=$DEV_SD  if=sd_fuse/hardkernel/bl1.bin.hardkernel
           $ sudo dd seek=31    of=$DEV_SD  if=sd_fuse/hardkernel/bl2.bin.hardkernel
           $ sudo dd seek=63    of=$DEV_SD  if=u-boot.bin
@@ -673,14 +664,15 @@ http://www.hardkernel.com/main/products/prdt_info.php?g_code=G134111883934
     # Select the tty serial port for the Odroid-XU3 debug console.
       Enter it into the configuration file as follows. Note 'ttyUSB0'
       is an example for a USB-uart cable.
+    $ sudo apt-get install minicom
     $ sudo nano -w /etc/minicom/minirc.dfl
       pu port             /dev/ttyUSB0
       pu rtscts           No
     $ sudo minicom
 
-    - boot the Odroid then test the console
-      Execute in the console terminal:
-       > echo UUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU
+ ? IF you can boot the Odroid then test the console
+   Execute in the Debug console terminal:
+    > echo UUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU
 
 
 
@@ -692,17 +684,19 @@ ______________________________________
 
 Patch u-boot / fastboot; no erase when flash partition
 ______________________________________
---- u-boot.old/common/cmd_fastboot.c	2015-05-21 19:47:31.723215096 -0600
-+++ u-boot.new/common/cmd_fastboot.c	2015-05-28 18:24:03.478285880 -0600
-@@ -590,7 +590,7 @@
- 			free(nul_buf);
+diff --git common/cmd_fastboot.c common/cmd_fastboot.c
+index 81b7f7d..ab72502 100644
+--- common/cmd_fastboot.c
++++ common/cmd_fastboot.c
+@@ -594,7 +594,7 @@ static int write_to_ptn_sdmmc(struct fastboot_ptentry *ptn,$
+                        free(nul_buf);
  #endif
  
--			if (bl_cnt>>10)
-+			if (0)/*(bl_cnt>>10)*/
- 			{
- 				argv[2] = buffer;
- 				argv[3] = device;
+-                       if (bl_cnt>>10)
++                       if (0)/*(bl_cnt>>10)*/
+                        {
+                                argv[2] = buffer;
+                                argv[3] = device;
 
 
 
