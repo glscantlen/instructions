@@ -191,8 +191,13 @@ requires extra cabling and utilities, see appended instructions:
        $ git clone --single-branch https://github.com/hardkernel/linux.git -b odroidxu3-3.10.y
        $ cd linux
 
-       # Note commit ee1b001... newer commits appear to have timming issues
-         with mplayer. Sometimes cause lock-up when <ESC>ing out of mplayer
+       ! Note commit ee1b001... newer commits appear to have timming or
+         deadlock issues with mplayer. Erratical system lock-up conditions
+         occore when <ESC>ing out of mplayer and just playing the test
+         videos. Initial investigations suggest the bug is introduce after
+         commit 597a26... This bug may also be a result of the Buildroot
+         issue building mplayer with xorg-dev.
+         see "Install the Development environment"
        $ git checkout ee1b0014142ad679f936318b412feb4832636d7a
 
        $ make odroidxu3_defconfig
@@ -712,6 +717,7 @@ See instructions above, "Install bootloaders"
 Requires pre-built Linux kernel and BuildRoot filesystem image.
 See above "Build & Install BuildRoot" and "Build & Install the kernel"
 ###sudo apt-get install android-tools-fastboot android-tools-fsutils
+###REPO_URL_PATH="https://github.com/glscantlen/instructions/raw/master/Buildroot_XU3_MPlayer"
 
  - Start fastboot on the odroid:
     - connect the OdroidXU3 to the development system with a microUSB cable
@@ -839,7 +845,8 @@ are created for the main instructions. It is provided now for convenience and te
        $ ../linaro-4.9/bin/arm-linux-gnueabihf-objdump -x system/skeleton/usr/lib/libmali.so | grep NEEDED
     - And you can download an "ldd" script to the Odroid's build
        $ REPO_URL_PATH="https://github.com/glscantlen/instructions/raw/master/Buildroot_XU3_MPlayer"
-       $ sudo wget $REPO_URL_PATH/usr.bin.ldd -O system/skeleton/usr/bin/ldd
+       $ wget $REPO_URL_PATH/usr.bin.ldd -O system/skeleton/usr/bin/ldd
+       $ chmod a+rx system/skeleton/usr/bin/ldd
 
  $ rm output/build/.root 
  $ make
