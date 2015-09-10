@@ -50,10 +50,6 @@ requires extra cabling and utilities, see appended instructions:
    ___________________________________________
  - Install the Development environment
     $ sudo apt-get install build-essential git ccache xz-utils openssh-server
-    ! Following is a temporary fix to Buildroot's mplayer. The mplayer
-      package's "configure" erroneously uses the Xorg development files
-      on the desktop *HOST* ! Therefore the host will need xorg-dev.
-    $ sudo apt-get install xorg-dev
 
     # Buildroot compatible, external toolchain. Release 2014.09
     $ export TOOLCHAIN="gcc-linaro-arm-linux-gnueabihf-4.9-2014.09_linux"
@@ -248,7 +244,7 @@ requires extra cabling and utilities, see appended instructions:
     - Add a new video driver package "armsoc" to Buildroot
       This is an X11 driver supporting the OdroidXU3's video hardware.
 
-       # insert a line for the armsoc package into the x11r7/Config.in
+       # insert one line for the armsoc package into the x11r7/Config.in
          armsoc is added to the "X11R7 Drivers" menu in alphabetic order.
          With nano, use ctrl-W to find "xdriver_xf86-video-ark"
        $ nano -w package/x11r7/Config.in
@@ -271,7 +267,7 @@ requires extra cabling and utilities, see appended instructions:
          <TAB>help
          <TAB>  Odroid XU3 video driver
 
-       # BuildRoot uses '.mk' files to download, configure and build it's packages.
+       # BuildRoot uses '.mk' files to download, configure, and build it's packages.
        ? IF you do not have access to REPO_URL_PATH then add armsoc's '.mk' file using
          the appended instructions below "Create ARMSOC xdriver_xf86-video-armsoc.mk"
        ? ELSE you can copy the pre-written .mk file from "instructions/Buildroot_XU3_MPlayer"
@@ -287,11 +283,11 @@ requires extra cabling and utilities, see appended instructions:
 
 
     # To change the default configuration for "eth0' from dynamic to static
-      see appended instructions below "BuildRoot Menuconfig" System configuration.
+      Ref. appended instructions "BuildRoot Menuconfig" System configuration.
     ? IF you are using DHCP for dynamic IP Address on eth0, the default.
        - ensure Network interface using DHCP is set to 'eth0' and the
          "config_eth" script is NOT used in Custom scripts.
-    ? ELSE you are using a static IP. Add this "config_eth" script
+    ? ELSE you are using a static IP. Add the following "config_eth" script
        - ensure Network interface using DHCP is NOT set to 'eth0' and the
          "config_eth" script is used in Custom scripts before creating image.
        $ nano -w support/scripts/config_eth
@@ -326,6 +322,13 @@ requires extra cabling and utilities, see appended instructions:
        # Youtube-dl is a compressed python script used to access Youtube and other's video files
        $ wget http://yt-dl.org/downloads/2015.06.25/youtube-dl -O system/skeleton/usr/bin/youtube-dl.py.zip
        $ chmod a+rx system/skeleton/usr/bin/youtube-dl.py.zip
+
+
+    - Fix a bug in the mplayer's .mk file. Add Buildroot's path
+      for staging to mplayer's configuration, ~ line 252
+       $ nano -w package/mplayer/mplayer.mk
+          --extra-cflags="$(MPLAYER_CFLAGS) -I$(STAGING_DIR)/usr/include" \
+          --extra-ldflags="$(MPLAYER_LDFLAGS) -L$(STAGING_DIR)/usr/lib" \
 
 
     - Build the root file system, install it, and install kernel modules & firmware.
@@ -412,8 +415,13 @@ ___________________________________________________
     TODO list X=done
 ___________________________________________________
 
- O Fix the mplayer bug that requires X86 host development files, xorg-dev,
-   for the arm build.
+ X Fix the mplayer bug that requires X86 host development files, xorg-dev,
+   for the arm build. The mplayer.mk file needed --extra-flags added to
+   "configure" parameters that define the location of the staging include
+   and library files.
+
+ O Fix lock-up issues running mplayer on kernel with latest commits.
+   See kernel build & install.
 
  X Instructions for packaging of hello world example code is provided
    in a sibling folder, Buildroot_hello_world.
@@ -431,8 +439,7 @@ ___________________________________________________
    It also provides OpenCL compute support on the T628 GPU
 
  O Provide instructions for packaging of GLES2 and EGL example code.
-
- O Provide instructions for packaging of OpenCL example code.
+   Provide instructions for packaging of OpenCL example code.
 
  O Fix deficient acceleration of GLES code NOT running under Marco window manager.
    Provide test examples with es2gears.
