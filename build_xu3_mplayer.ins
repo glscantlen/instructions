@@ -189,21 +189,27 @@ requires extra cabling and utilities, see appended instructions:
        $ git clone --single-branch https://github.com/hardkernel/linux.git -b odroidxu3-3.10.y
        $ cd linux
 
-       ! Note commit ee1b001... newer commits appear to have timming or
-         deadlock issues with mplayer. Erratical system lock-up conditions
-         occore when <ESC>ing out of mplayer and just playing the test
-         videos. Initial investigations suggest the bug is introduce after
-         commit 597a26... This bug may also be a result of the Buildroot
-         issue building mplayer with xorg-dev.
-         see "Install the Development environment"
-       $ git checkout ee1b0014142ad679f936318b412feb4832636d7a
+       ! The latest tested and known compatible commit is ee1b00...
+         The next tested and known incompatible commit is c9a6dc...
+         Use these commands to show the latest and current commits
+          $ git rev-parse --verify HEAD  # current HEAD
+          $ git show-ref --verify refs/heads/odroidxu3-3.10.y
+          $ git rev-list --all --max-count=100 | grep -En "ee1b00|c9a6dc"
+       ? IF you need to set the HEAD to the tested good commit ;
+          $ git checkout ee1b0014142ad679f936318b412feb4832636d7a
+       ? ELSE you may proceed with a newer commit but beware ;
+         Initial investigations suggest a bug is introduced after
+         commit 597a26... Newer commits appear to have timming or
+         deadlock issues with mplayer. Erratic system lock-up
+         conditions occore when <ESC>ing out of mplayer and just
+         playing the test videos.
 
        $ make odroidxu3_defconfig
        $ make -j$CPU_COUNT zImage
        $ make -j$CPU_COUNT modules
        $ make dtbs
 
-    - Install the kernel onto the boot filesystems. Initrd is not used.
+    - Install the kernel onto the boot filesystem. Initrd is not used.
       Modules and firmware will be installed onto root in BuildRoot procedures.
        $ sudo cp arch/arm/boot/zImage /tmp/ODROID_BOOT/
        $ sudo cp arch/arm/boot/dts/exynos5422-odroidxu3.dtb /tmp/ODROID_BOOT/
