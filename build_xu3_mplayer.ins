@@ -35,6 +35,7 @@ requires extra cabling and utilities, see appended instructions:
    ___________________________________________
  - Insert the microSD into the desktop system and verify it's device
    path. The path name will be something like "/dev/sdX" or "/dev/mmcX".
+   This path will NOT include the appended partition number.
    Replace "sdX" in the following instructions with the correct device
    name for your microSD.
 
@@ -115,8 +116,9 @@ requires extra cabling and utilities, see appended instructions:
           $ sudo dd seek=63    of=$DEV_SD  if=u-boot.bin
           $ sudo dd seek=719   of=$DEV_SD  if=sd_fuse/hardkernel/tzsw.bin.hardkernel
 
-       # Fastboot requires access to the Odroid as a USB device at its micro USB port.
-         Android utilities are installed for fastboot in 2 Ubuntu packages.
+    ? IF you plan to remotely install partitions using fastboot, it
+      requires access to the Odroid as a USB device on the micro USB port.
+      Two Android packages are installed to support the fastboot client.
        $ sudo apt-get install android-tools-fastboot android-tools-fsutils
 
        ? IF you want to allow non-sudo access to the Odroid fastboot device
