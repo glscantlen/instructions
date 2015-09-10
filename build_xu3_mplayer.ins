@@ -284,10 +284,10 @@ requires extra cabling and utilities, see appended instructions:
 
     # To change the default configuration for "eth0' from dynamic to static
       Ref. appended instructions "BuildRoot Menuconfig" System configuration.
-    ? IF you are using DHCP for dynamic IP Address on eth0, the default.
+    ? IF you are using DHCP for dynamic IP Address on eth0, the default:
        - ensure Network interface using DHCP is set to 'eth0' and the
          "config_eth" script is NOT used in Custom scripts.
-    ? ELSE you are using a static IP. Add the following "config_eth" script
+    ? ELSE you are using a static IP. Add the following "config_eth" script.
        - ensure Network interface using DHCP is NOT set to 'eth0' and the
          "config_eth" script is used in Custom scripts before creating image.
        $ nano -w support/scripts/config_eth
