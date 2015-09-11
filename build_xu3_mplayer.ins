@@ -76,8 +76,15 @@ requires extra cabling and utilities, see appended instructions:
     $ git clone https://github.com/hardkernel/u-boot.git -b odroidxu3-v2012.07
     $ cd u-boot
 
-    # Note: bootloaders can be re-installed remotely with fastboot if u-boot is
-      already installed and running on the odroid.
+    ! The last tested and known compatible commit is 3acd50...
+      Use this command to show the latest commit
+       $ git show-ref --verify refs/heads/odroidxu3-v2012.07
+      You may proceed with a newer commit but beware.
+    ? IF you need to set the HEAD to the tested commit ;
+       $ git checkout 3acd50c296398bbba16dc6dd964d3ee36a4c85f5
+
+    # Note: bootloaders can be re-installed remotely with fastboot
+      if u-boot is already installed and running on the odroid.
       See appended instructions below: "Install System Remotely".
 
     - wipe the front 100M of microSD and restore an msdos MBR
@@ -198,12 +205,15 @@ requires extra cabling and utilities, see appended instructions:
        ? IF you need to set the HEAD to the tested good commit ;
           $ git checkout ee1b0014142ad679f936318b412feb4832636d7a
        ? ELSE you may proceed with a newer commit but beware ;
-         Initial investigations suggest a bug is introduced after
-         commit 597a26... Newer commits appear to have timming or
-         deadlock issues with mplayer. Erratic system lock-up
-         conditions occore when <ESC>ing out of mplayer and just
-         playing the test videos.
+         Initial investigations suggest a bug was introduced in file
+         odroid_max98090.c after commit 5f8134... Newer commits appear
+         to have timming or deadlock issues with mplayer. Erratic
+         system lock-up conditions occore when playing the test videos.
+         The following command will revert the suspect file.
+          $ git checkout 5f8134159a857a94ec233121b2fed590e7ac1eec sound/soc/samsung/odroid_max98090.c
 
+
+       $ make clean  # just in case
        $ make odroidxu3_defconfig
        $ make -j$CPU_COUNT zImage
        $ make -j$CPU_COUNT modules
@@ -766,7 +776,7 @@ See above "Build & Install BuildRoot" and "Build & Install the kernel"
 
  - Hardkernel boot image
     $ cd ~/xu3_mplayer/linux
-    $ rm /tmp/VFS_BOOT.img
+    $ rm /tmp/VFS_BOOT.img  # just in case
     $ dd if=/dev/zero of=/tmp/VFS_BOOT.img bs=1 count=0 seek=$SIZEOF_DEV_SD1 ; ls -alsh /tmp/VFS_BOOT.img
     $ mkfs.vfat /tmp/VFS_BOOT.img ; ls -alsh /tmp/VFS_BOOT.img
     $ fsck.vfat -fVv /tmp/VFS_BOOT.img # verify fat
@@ -779,7 +789,7 @@ See above "Build & Install BuildRoot" and "Build & Install the kernel"
 
  - Buildroot root image
     $ cd ~/xu3_mplayer/buildroot-2015.05
-    $ rm /tmp/VFS_ROOT.img
+    $ rm /tmp/VFS_ROOT.img  # just in case
     $ dd if=/dev/zero of=/tmp/VFS_ROOT.img bs=1 count=0 seek=$SIZEOF_DEV_SD2 ; ls -alsh /tmp/VFS_ROOT.img
     $ mkfs.ext4 -O ^has_journal /tmp/VFS_ROOT.img ; ls -alsh /tmp/VFS_ROOT.img
       Warning: Not a block special device. Proceed anyway? (y,n) y
