@@ -21,7 +21,7 @@ requires extra cabling and utilities, see appended instructions:
  $ cd ~/xu3_mplayer
 
    ___________________________________________
- - Retrieve the latest copy of this instruction
+ - Retrieve the latest release of this instruction
     $ REPO_URL_PATH="https://github.com/glscantlen/instructions/raw/master/Buildroot_XU3_MPlayer"
     $ wget $REPO_URL_PATH/build_xu3_mplayer.ins -O ./build_xu3_mplayer_new.ins
 
@@ -59,8 +59,9 @@ requires extra cabling and utilities, see appended instructions:
 
     # The Linaro-4.9 rel.2014.09 toolchain is built for i386.
       The following steps will install required i386 libraries.
-       $ sudo apt-get install g++-multilib
-       $ sudo apt-get install zlib1g:i386
+      Notice: This will replace some previous arm packages like
+      g++-4.8-arm-linux-gnueabihf and gcc-4.8-multilib.
+       $ sudo apt-get install g++-multilib zlib1g:i386 libncurses5:i386
 
     $ export CROSS_COMPILE=~/xu3_mplayer/linaro-4.9/bin/arm-linux-gnueabihf-
     $ ls $CROSS_COMPILE*
@@ -83,7 +84,7 @@ requires extra cabling and utilities, see appended instructions:
     ? IF you need to set the HEAD to the tested commit ;
        $ git checkout 3acd50c296398bbba16dc6dd964d3ee36a4c85f5
 
-    # Note: bootloaders can be re-installed remotely with fastboot
+    # Note: bootloaders can be re-installed remotely with fastboot,
       if u-boot is already installed and running on the odroid.
       See appended instructions below: "Install System Remotely".
 
@@ -207,8 +208,8 @@ requires extra cabling and utilities, see appended instructions:
        ? ELSE you may proceed with a newer commit but beware ;
          Initial investigations suggest a bug was introduced in file
          odroid_max98090.c after commit 5f8134... Newer commits appear
-         to have timming or deadlock issues with mplayer. Erratic
-         system lock-up conditions occore when playing the test videos.
+         to have timing or deadlock issues with mplayer. Erratic
+         system lock-up conditions occur when playing the test videos.
          The following command will revert the suspect file.
           $ git checkout 5f8134159a857a94ec233121b2fed590e7ac1eec sound/soc/samsung/odroid_max98090.c
 
@@ -341,7 +342,7 @@ requires extra cabling and utilities, see appended instructions:
 
 
     - Fix a bug in the mplayer's .mk file. Add Buildroot's path
-      for staging to mplayer's configuration, ~ line 252
+      for staging to mplayer's configuration, ~ line 259
        $ nano -w package/mplayer/mplayer.mk
           --extra-cflags="$(MPLAYER_CFLAGS) -I$(STAGING_DIR)/usr/include" \
           --extra-ldflags="$(MPLAYER_LDFLAGS) -L$(STAGING_DIR)/usr/lib" \
@@ -437,7 +438,8 @@ ___________________________________________________
    and library files.
 
  O Fix lock-up issues running mplayer on kernel with latest commits.
-   See kernel build & install.
+   See kernel build & install. Temperary fix uses odroid_max98090.c
+   from commit 5f8134...
 
  X Instructions for packaging of hello world example code is provided
    in a sibling folder, Buildroot_hello_world.
