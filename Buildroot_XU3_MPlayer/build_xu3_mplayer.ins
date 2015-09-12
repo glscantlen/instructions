@@ -21,7 +21,7 @@ requires extra cabling and utilities, see appended instructions:
  $ cd ~/xu3_mplayer
 
    ___________________________________________
- - Retrieve the latest copy of this instruction
+ - Retrieve the latest release of this instruction
     $ REPO_URL_PATH="https://github.com/glscantlen/instructions/raw/master/Buildroot_XU3_MPlayer"
     $ wget $REPO_URL_PATH/build_xu3_mplayer.ins -O ./build_xu3_mplayer_new.ins
 
@@ -35,6 +35,7 @@ requires extra cabling and utilities, see appended instructions:
    ___________________________________________
  - Insert the microSD into the desktop system and verify it's device
    path. The path name will be something like "/dev/sdX" or "/dev/mmcX".
+   This path will NOT include the appended partition number.
    Replace "sdX" in the following instructions with the correct device
    name for your microSD.
 
@@ -49,10 +50,6 @@ requires extra cabling and utilities, see appended instructions:
    ___________________________________________
  - Install the Development environment
     $ sudo apt-get install build-essential git ccache xz-utils openssh-server
-    ! Following is a temporary fix to Buildroot's mplayer. The mplayer
-      package's "configure" erroneously uses the Xorg development files
-      on the desktop *HOST* ! Therefore the host will need xorg-dev.
-    $ sudo apt-get install xorg-dev
 
     # Buildroot compatible, external toolchain. Release 2014.09
     $ export TOOLCHAIN="gcc-linaro-arm-linux-gnueabihf-4.9-2014.09_linux"
@@ -62,8 +59,9 @@ requires extra cabling and utilities, see appended instructions:
 
     # The Linaro-4.9 rel.2014.09 toolchain is built for i386.
       The following steps will install required i386 libraries.
-       $ sudo apt-get install g++-multilib
-       $ sudo apt-get install zlib1g:i386
+      Notice: This will replace some previous arm packages like
+      g++-4.8-arm-linux-gnueabihf and gcc-4.8-multilib.
+       $ sudo apt-get install g++-multilib zlib1g:i386 libncurses5:i386
 
     $ export CROSS_COMPILE=~/xu3_mplayer/linaro-4.9/bin/arm-linux-gnueabihf-
     $ ls $CROSS_COMPILE*
@@ -79,8 +77,15 @@ requires extra cabling and utilities, see appended instructions:
     $ git clone https://github.com/hardkernel/u-boot.git -b odroidxu3-v2012.07
     $ cd u-boot
 
-    # Note: bootloaders can be re-installed remotely with fastboot if u-boot is
-      already installed and running on the odroid.
+    ! The last tested and known compatible commit is 3acd50...
+      Use this command to show the latest commit
+       $ git show-ref --verify refs/heads/odroidxu3-v2012.07
+      You may proceed with a newer commit but beware.
+    ? IF you need to set the HEAD to the tested commit ;
+       $ git checkout 3acd50c296398bbba16dc6dd964d3ee36a4c85f5
+
+    # Note: bootloaders can be re-installed remotely with fastboot,
+      if u-boot is already installed and running on the odroid.
       See appended instructions below: "Install System Remotely".
 
     - wipe the front 100M of microSD and restore an msdos MBR
@@ -115,8 +120,9 @@ requires extra cabling and utilities, see appended instructions:
           $ sudo dd seek=63    of=$DEV_SD  if=u-boot.bin
           $ sudo dd seek=719   of=$DEV_SD  if=sd_fuse/hardkernel/tzsw.bin.hardkernel
 
-       # Fastboot requires access to the Odroid as a USB device at its micro USB port.
-         Android utilities are installed for fastboot in 2 Ubuntu packages.
+    ? IF you plan to remotely install partitions using fastboot, it
+      requires access to the Odroid as a USB device on the micro USB port.
+      Two Android packages are installed to support the fastboot client.
        $ sudo apt-get install android-tools-fastboot android-tools-fsutils
 
        ? IF you want to allow non-sudo access to the Odroid fastboot device
@@ -191,21 +197,30 @@ requires extra cabling and utilities, see appended instructions:
        $ git clone --single-branch https://github.com/hardkernel/linux.git -b odroidxu3-3.10.y
        $ cd linux
 
-       ! Note commit ee1b001... newer commits appear to have timming or
-         deadlock issues with mplayer. Erratical system lock-up conditions
-         occore when <ESC>ing out of mplayer and just playing the test
-         videos. Initial investigations suggest the bug is introduce after
-         commit 597a26... This bug may also be a result of the Buildroot
-         issue building mplayer with xorg-dev.
-         see "Install the Development environment"
-       $ git checkout ee1b0014142ad679f936318b412feb4832636d7a
+       ! The latest tested and known compatible commit is ee1b00...
+         The next tested and known incompatible commit is c9a6dc...
+         Use these commands to show the latest and current commits
+          $ git rev-parse --verify HEAD  # current HEAD
+          $ git show-ref --verify refs/heads/odroidxu3-3.10.y
+          $ git rev-list --all --max-count=100 | grep -En "ee1b00|c9a6dc"
+       ? IF you need to set the HEAD to the tested good commit ;
+          $ git checkout ee1b0014142ad679f936318b412feb4832636d7a
+       ? ELSE you may proceed with a newer commit but beware ;
+         Initial investigations suggest a bug was introduced in file
+         odroid_max98090.c after commit 5f8134... Newer commits appear
+         to have timing or deadlock issues with mplayer. Erratic
+         system lock-up conditions occur when playing the test videos.
+         The following command will revert the suspect file.
+          $ git checkout 5f8134159a857a94ec233121b2fed590e7ac1eec sound/soc/samsung/odroid_max98090.c
 
+
+       $ make clean  # just in case
        $ make odroidxu3_defconfig
        $ make -j$CPU_COUNT zImage
        $ make -j$CPU_COUNT modules
        $ make dtbs
 
-    - Install the kernel onto the boot filesystems. Initrd is not used.
+    - Install the kernel onto the boot filesystem. Initrd is not used.
       Modules and firmware will be installed onto root in BuildRoot procedures.
        $ sudo cp arch/arm/boot/zImage /tmp/ODROID_BOOT/
        $ sudo cp arch/arm/boot/dts/exynos5422-odroidxu3.dtb /tmp/ODROID_BOOT/
@@ -246,7 +261,7 @@ requires extra cabling and utilities, see appended instructions:
     - Add a new video driver package "armsoc" to Buildroot
       This is an X11 driver supporting the OdroidXU3's video hardware.
 
-       # insert a line for the armsoc package into the x11r7/Config.in
+       # insert one line for the armsoc package into the x11r7/Config.in
          armsoc is added to the "X11R7 Drivers" menu in alphabetic order.
          With nano, use ctrl-W to find "xdriver_xf86-video-ark"
        $ nano -w package/x11r7/Config.in
@@ -269,7 +284,7 @@ requires extra cabling and utilities, see appended instructions:
          <TAB>help
          <TAB>  Odroid XU3 video driver
 
-       # BuildRoot uses '.mk' files to download, configure and build it's packages.
+       # BuildRoot uses '.mk' files to download, configure, and build it's packages.
        ? IF you do not have access to REPO_URL_PATH then add armsoc's '.mk' file using
          the appended instructions below "Create ARMSOC xdriver_xf86-video-armsoc.mk"
        ? ELSE you can copy the pre-written .mk file from "instructions/Buildroot_XU3_MPlayer"
@@ -285,11 +300,11 @@ requires extra cabling and utilities, see appended instructions:
 
 
     # To change the default configuration for "eth0' from dynamic to static
-      see appended instructions below "BuildRoot Menuconfig" System configuration.
-    ? IF you are using DHCP for dynamic IP Address on eth0, the default.
+      Ref. appended instructions "BuildRoot Menuconfig" System configuration.
+    ? IF you are using DHCP for dynamic IP Address on eth0, the default:
        - ensure Network interface using DHCP is set to 'eth0' and the
          "config_eth" script is NOT used in Custom scripts.
-    ? ELSE you are using a static IP. Add this "config_eth" script
+    ? ELSE you are using a static IP. Add the following "config_eth" script.
        - ensure Network interface using DHCP is NOT set to 'eth0' and the
          "config_eth" script is used in Custom scripts before creating image.
        $ nano -w support/scripts/config_eth
@@ -324,6 +339,13 @@ requires extra cabling and utilities, see appended instructions:
        # Youtube-dl is a compressed python script used to access Youtube and other's video files
        $ wget http://yt-dl.org/downloads/2015.06.25/youtube-dl -O system/skeleton/usr/bin/youtube-dl.py.zip
        $ chmod a+rx system/skeleton/usr/bin/youtube-dl.py.zip
+
+
+    - Fix a bug in the mplayer's .mk file. Add Buildroot's path
+      for staging to mplayer's configuration, ~ line 259
+       $ nano -w package/mplayer/mplayer.mk
+          --extra-cflags="$(MPLAYER_CFLAGS) -I$(STAGING_DIR)/usr/include" \
+          --extra-ldflags="$(MPLAYER_LDFLAGS) -L$(STAGING_DIR)/usr/lib" \
 
 
     - Build the root file system, install it, and install kernel modules & firmware.
@@ -410,8 +432,14 @@ ___________________________________________________
     TODO list X=done
 ___________________________________________________
 
- O Fix the mplayer bug that requires X86 host development files, xorg-dev,
-   for the arm build.
+ X Fix the mplayer bug that requires X86 host development files, xorg-dev,
+   for the arm build. The mplayer.mk file needed --extra-flags added to
+   "configure" parameters that define the location of the staging include
+   and library files.
+
+ O Fix lock-up issues running mplayer on kernel with latest commits.
+   See kernel build & install. Temperary fix uses odroid_max98090.c
+   from commit 5f8134...
 
  X Instructions for packaging of hello world example code is provided
    in a sibling folder, Buildroot_hello_world.
@@ -429,8 +457,7 @@ ___________________________________________________
    It also provides OpenCL compute support on the T628 GPU
 
  O Provide instructions for packaging of GLES2 and EGL example code.
-
- O Provide instructions for packaging of OpenCL example code.
+   Provide instructions for packaging of OpenCL example code.
 
  O Fix deficient acceleration of GLES code NOT running under Marco window manager.
    Provide test examples with es2gears.
@@ -751,7 +778,7 @@ See above "Build & Install BuildRoot" and "Build & Install the kernel"
 
  - Hardkernel boot image
     $ cd ~/xu3_mplayer/linux
-    $ rm /tmp/VFS_BOOT.img
+    $ rm /tmp/VFS_BOOT.img  # just in case
     $ dd if=/dev/zero of=/tmp/VFS_BOOT.img bs=1 count=0 seek=$SIZEOF_DEV_SD1 ; ls -alsh /tmp/VFS_BOOT.img
     $ mkfs.vfat /tmp/VFS_BOOT.img ; ls -alsh /tmp/VFS_BOOT.img
     $ fsck.vfat -fVv /tmp/VFS_BOOT.img # verify fat
@@ -764,7 +791,7 @@ See above "Build & Install BuildRoot" and "Build & Install the kernel"
 
  - Buildroot root image
     $ cd ~/xu3_mplayer/buildroot-2015.05
-    $ rm /tmp/VFS_ROOT.img
+    $ rm /tmp/VFS_ROOT.img  # just in case
     $ dd if=/dev/zero of=/tmp/VFS_ROOT.img bs=1 count=0 seek=$SIZEOF_DEV_SD2 ; ls -alsh /tmp/VFS_ROOT.img
     $ mkfs.ext4 -O ^has_journal /tmp/VFS_ROOT.img ; ls -alsh /tmp/VFS_ROOT.img
       Warning: Not a block special device. Proceed anyway? (y,n) y
