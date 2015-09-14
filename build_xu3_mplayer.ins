@@ -190,7 +190,7 @@ requires extra cabling and utilities, see appended instructions:
    ###CPU_COUNT=$(grep processor /proc/cpuinfo | awk '{count=$NF};END{print count+1}')
    ###export ARCH=arm
    ###export CROSS_COMPILE=~/xu3_mplayer/linaro-4.9/bin/arm-linux-gnueabihf-
-   ###Verify /tmp/ODROID_BOOT is mounted to  $DEV_SD'1'  OR  -o loop /tmp/VFS_BOOT.img
+   ###mount | grep ODROID_BOOT # Verify  $DEV_SD'1'  OR  -o loop /tmp/VFS_BOOT.img
    ###cd ~/xu3_mplayer
 
     - GIT the kernel source and build
@@ -251,7 +251,7 @@ requires extra cabling and utilities, see appended instructions:
  - Build & Install BuildRoot system
    ###REPO_URL_PATH="https://github.com/glscantlen/instructions/raw/master/Buildroot_XU3_MPlayer"
    ###CPU_COUNT=$(grep processor /proc/cpuinfo | awk '{count=$NF};END{print count+1}')
-   ###Verify /tmp/ODROID_ROOT is mounted to  $DEV_SD'2'  OR  -o loop /tmp/VFS_ROOT.img
+   ###mount | grep ODROID_ROOT # Verify  $DEV_SD'2'  OR  -o loop /tmp/VFS_ROOT.img
    ###cd ~/xu3_mplayer
 
     $ wget http://git.buildroot.net/buildroot/snapshot/buildroot-2015.05.tar.bz2
@@ -402,7 +402,7 @@ requires extra cabling and utilities, see appended instructions:
        > es2gears_x11
 
        ! HINT: you can open a second Xterm window, display this document, and use copy/paste
-          > ssh <USER>@<IPADDR>
+          > ssh <UBUNTU-USER>@<UBUNTU-IPADDR>
           > cat ~/xu3_mplayer/build_xu3_mplayer_new.ins
           - use shift-insert to paste selected text into the first Xterm window.
 
