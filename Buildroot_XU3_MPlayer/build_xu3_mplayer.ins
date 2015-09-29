@@ -441,6 +441,9 @@ ___________________________________________________
    See kernel build & install. Temperary fix uses odroid_max98090.c
    from commit 5f8134...
 
+ X Add appended instructions for creating a compressed disk image.
+   Add appended instructions for installing compressed disk image.
+
  X Instructions for packaging of hello world example code is provided
    in a sibling folder, Buildroot_hello_world.
 
@@ -461,7 +464,6 @@ ___________________________________________________
 
  O Fix deficient acceleration of GLES code NOT running under Marco window manager.
    Provide test examples with es2gears.
-
 
 
 
@@ -741,8 +743,8 @@ Install System Remotely with Fastboot / Android tools (condensed version)
 _________________________________________________________________________
 Requires pre-installed bootloaders, fwbl1, bl2, u-boot.bin, and tzsw.
 See instructions above, "Install bootloaders"
-Requires pre-built Linux kernel and BuildRoot filesystem image.
-See above "Build & Install BuildRoot" and "Build & Install the kernel"
+Requires pre-built Linux kernel and BuildRoot image. See above:
+"Build & Install BuildRoot" and "Build & Install the kernel"
 ###sudo apt-get install android-tools-fastboot android-tools-fsutils
 ###REPO_URL_PATH="https://github.com/glscantlen/instructions/raw/master/Buildroot_XU3_MPlayer"
 
@@ -808,6 +810,102 @@ See above "Build & Install BuildRoot" and "Build & Install the kernel"
 
  ! DO NOT "fastboot flash" boot, kernel, ramdisk, userdata, or cache. These
    images are specific to Android and will over-write installed partitions.
+
+
+
+
+
+___________________________________________________
+
+    Create Compressed Disk Image
+___________________________________________________
+Requires pre-built Linux kernel and BuildRoot image. See above:
+"Build & Install BuildRoot" and "Build & Install the kernel"
+###REPO_URL_PATH="https://github.com/glscantlen/instructions/raw/master/Buildroot_XU3_MPlayer"
+###cd xu3_mplayer
+
+ - Define partitions' size and location
+    $ SIZE_BRIMG=$(ls -l buildroot-2015.05/output/images/rootfs.tar | awk '{print $5}')
+    $ echo -e $SIZE_BRIMG '\t' buildroot-2015.05/output/images/rootfs.tar
+
+    $ START_BOOT=$(expr 3072 \* 512)               # =   1572864 > (719*512+tzsw)
+    $  SIZE_BOOT=$(expr 257 \* 1024 \* 512)        # = 134742016 > (zImage+dtb+ini)
+    $ START_ROOT=$(expr $SIZE_BOOT + $START_BOOT)  # = 136314880
+    $  SIZE_ROOT=$(expr $SIZE_BRIMG \* 2 )         # added room for kernel modules
+    $   SIZE_IMG=$(expr $START_ROOT + $SIZE_ROOT )
+
+ - Create a virtual disk file with MSDOS partition tables
+    $ rm /tmp/VD_ODROID.img  # just in case
+    $ dd if=/dev/zero of=/tmp/VD_ODROID.img bs=1 count=0 seek=$SIZE_IMG ; ls -alsh /tmp/VD_ODROID.img
+    $ losetup /dev/loop0 /tmp/VD_ODROID.img
+    $ sudo parted /dev/loop0 "mklabel msdos" ; ls -alsh /tmp/VD_ODROID.img
+
+    $ echo -e 'Partitioning:\n1) '$SIZE_BOOT bytes' \t '@ $START_BOOT'\n2) '$SIZE_ROOT bytes' \t '@ $START_ROOT
+    $ sudo parted /dev/loop0 mkpart primary fat16 $START_BOOT"B" $(expr $START_ROOT - 1)B
+      (I)gnore performance warning
+    $ sudo parted /dev/loop0 mkpart primary  ext4 $START_ROOT"B" $(expr $SIZE_IMG - 1)B
+    $ parted /dev/loop0 unit B print ; ls -alsh /tmp/VD_ODROID.img
+
+ - Install u-boot in non-tabled-partitions.
+    $ dd seek=1     of=/dev/loop0  if=u-boot/sd_fuse/hardkernel/bl1.bin.hardkernel
+    $ dd seek=31    of=/dev/loop0  if=u-boot/sd_fuse/hardkernel/bl2.bin.hardkernel
+    $ dd seek=63    of=/dev/loop0  if=u-boot/u-boot.bin
+    $ dd seek=719   of=/dev/loop0  if=u-boot/sd_fuse/hardkernel/tzsw.bin.hardkernel
+
+ - Format and install Boot filesystem
+    $ cat /proc/partitions | grep loop ; ls -alsh /tmp/VD_ODROID.img
+    $ sudo mkfs.vfat /dev/loop0p1
+      Warning: unable to get drive geometry, using default 255/63
+    $ sudo fsck.vfat -fvp  /dev/loop0p1   # verify fat
+    $ sudo mount /dev/loop0p1 /mnt
+    $ df -h /mnt
+    $ sudo cp linux/arch/arm/boot/zImage /mnt
+    $ sudo cp linux/arch/arm/boot/dts/exynos5422-odroidxu3.dtb /mnt
+    $ sudo wget $REPO_URL_PATH/boot.ini -O /mnt/boot.ini
+    $ sudo umount /mnt ; ls -alsh /tmp/VD_ODROID.img
+
+ - Format and install Root filesystem
+    $ mkfs.ext4 -O ^has_journal /dev/loop0p2
+    $ fsck.ext4 -fvp /dev/loop0p2              # verify ext4
+    $ tune2fs -l /dev/loop0p2 | grep features  # no journal
+    $ sudo mount /dev/loop0p2 /mnt
+    $ df -h /mnt
+    $ sudo tar -xvf buildroot-2015.05/output/images/rootfs.tar -C /mnt ; sudo sync ; ls -alsh /tmp/VD_ODROID.img
+    $ sudo make ARCH=arm CROSS_COMPILE=../linaro-4.9/bin/arm-linux-gnueabihf- INSTALL_MOD_PATH=/mnt -C linux modules_install
+    $ sudo umount /mnt ; ls -alsh /tmp/VD_ODROID.img
+
+ $ losetup -d /dev/loop0
+ $ gzip -k /tmp/VD_ODROID.img ; ls -lh /tmp/VD_ODROID.img*
+###cp /tmp/VD_ODROID.img.gz ~/github/instructions/Buildroot_XU3_MPlayer/vdisk.img.gz
+
+
+
+
+___________________________________________________
+
+    Install Compressed Disk Image
+___________________________________________________
+###REPO_URL_PATH="https://github.com/glscantlen/instructions/raw/master/Buildroot_XU3_MPlayer"
+
+ ! Flash the microSD. The device path will be something like "/dev/sdX" or "/dev/mmcX"
+   replace sdX in the following instructions with correct device name for the microSD
+   CAUTION!! dd can destroy a disk. Make sure /dev/sdX is the correct device for the microSD.
+ - insert the microSD on the S/W development system and verify it's name.
+    $ sudo partprobe
+    $ cat /proc/partitions
+    $ DEV_SD=/dev/sdX  # !!! make sure this is your microSD
+    $ sudo umount $DEV_SD? # un-mount all partitions
+
+ - Download and flash the disk image onto the microSD
+    $ wget $REPO_URL_PATH/vdisk.img.gz -O /tmp/VD_ODROID.img.gz
+    $ sudo zcat -v /tmp/VD_ODROID.img.gz | dd of=$DEV_SD  # may take several min.
+    $ sudo sync
+    $ sudo fsck.vfat -fvp  $DEV_SD'1'   # verify fat
+
+ - Resize the Root partition to max.
+    $ sudo parted $DEV_SD "resizepart 2 -1" unit B print
+    $ sudo e2fsck -fvp $DEV_SD'2'
+    $ sudo resize2fs $DEV_SD'2'
 
 
 
