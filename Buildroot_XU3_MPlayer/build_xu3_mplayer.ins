@@ -822,7 +822,7 @@ ___________________________________________________
 Requires pre-built Linux kernel and BuildRoot image. See above:
 "Build & Install BuildRoot" and "Build & Install the kernel"
 ###REPO_URL_PATH="https://github.com/glscantlen/instructions/raw/master/Buildroot_XU3_MPlayer"
-###cd xu3_mplayer
+###cd ~/xu3_mplayer
 
  - Define partitions' size and location
     $ SIZE_BRIMG=$(ls -l buildroot-2015.05/output/images/rootfs.tar | awk '{print $5}')
@@ -837,20 +837,20 @@ Requires pre-built Linux kernel and BuildRoot image. See above:
  - Create a virtual disk file with MSDOS partition tables
     $ rm /tmp/VD_ODROID.img  # just in case
     $ dd if=/dev/zero of=/tmp/VD_ODROID.img bs=1 count=0 seek=$SIZE_IMG ; ls -alsh /tmp/VD_ODROID.img
-    $ losetup /dev/loop0 /tmp/VD_ODROID.img
+    $ sudo losetup /dev/loop0 /tmp/VD_ODROID.img
     $ sudo parted /dev/loop0 "mklabel msdos" ; ls -alsh /tmp/VD_ODROID.img
 
     $ echo -e 'Partitioning:\n1) '$SIZE_BOOT bytes' \t '@ $START_BOOT'\n2) '$SIZE_ROOT bytes' \t '@ $START_ROOT
     $ sudo parted /dev/loop0 mkpart primary fat16 $START_BOOT"B" $(expr $START_ROOT - 1)B
       (I)gnore performance warning
     $ sudo parted /dev/loop0 mkpart primary  ext4 $START_ROOT"B" $(expr $SIZE_IMG - 1)B
-    $ parted /dev/loop0 unit B print ; ls -alsh /tmp/VD_ODROID.img
+    $ sudo parted /dev/loop0 unit B print ; ls -alsh /tmp/VD_ODROID.img
 
  - Install u-boot in non-tabled-partitions.
-    $ dd seek=1     of=/dev/loop0  if=u-boot/sd_fuse/hardkernel/bl1.bin.hardkernel
-    $ dd seek=31    of=/dev/loop0  if=u-boot/sd_fuse/hardkernel/bl2.bin.hardkernel
-    $ dd seek=63    of=/dev/loop0  if=u-boot/u-boot.bin
-    $ dd seek=719   of=/dev/loop0  if=u-boot/sd_fuse/hardkernel/tzsw.bin.hardkernel
+    $ sudo dd seek=1     of=/dev/loop0  if=u-boot/sd_fuse/hardkernel/bl1.bin.hardkernel
+    $ sudo dd seek=31    of=/dev/loop0  if=u-boot/sd_fuse/hardkernel/bl2.bin.hardkernel
+    $ sudo dd seek=63    of=/dev/loop0  if=u-boot/u-boot.bin
+    $ sudo dd seek=719   of=/dev/loop0  if=u-boot/sd_fuse/hardkernel/tzsw.bin.hardkernel
 
  - Format and install Boot filesystem
     $ cat /proc/partitions | grep loop ; ls -alsh /tmp/VD_ODROID.img
@@ -865,16 +865,16 @@ Requires pre-built Linux kernel and BuildRoot image. See above:
     $ sudo umount /mnt ; ls -alsh /tmp/VD_ODROID.img
 
  - Format and install Root filesystem
-    $ mkfs.ext4 -O ^has_journal /dev/loop0p2
-    $ fsck.ext4 -fvp /dev/loop0p2              # verify ext4
-    $ tune2fs -l /dev/loop0p2 | grep features  # no journal
+    $ sudo mkfs.ext4 -O ^has_journal /dev/loop0p2
+    $ sudo fsck.ext4 -fvp /dev/loop0p2              # verify ext4
+    $ sudo tune2fs -l /dev/loop0p2 | grep features  # no journal
     $ sudo mount /dev/loop0p2 /mnt
     $ df -h /mnt
     $ sudo tar -xvf buildroot-2015.05/output/images/rootfs.tar -C /mnt ; sudo sync ; ls -alsh /tmp/VD_ODROID.img
     $ sudo make ARCH=arm CROSS_COMPILE=../linaro-4.9/bin/arm-linux-gnueabihf- INSTALL_MOD_PATH=/mnt -C linux modules_install
     $ sudo umount /mnt ; ls -alsh /tmp/VD_ODROID.img
 
- $ losetup -d /dev/loop0
+ $ sudo losetup -d /dev/loop0
  $ gzip -k /tmp/VD_ODROID.img ; ls -lh /tmp/VD_ODROID.img*
 ###cp /tmp/VD_ODROID.img.gz ~/github/instructions/Buildroot_XU3_MPlayer/vdisk.img.gz
 
@@ -898,7 +898,7 @@ ___________________________________________________
 
  - Download and flash the disk image onto the microSD
     $ wget $REPO_URL_PATH/vdisk.img.gz -O /tmp/VD_ODROID.img.gz
-    $ sudo zcat -v /tmp/VD_ODROID.img.gz | dd of=$DEV_SD  # may take several min.
+    $ zcat -v /tmp/VD_ODROID.img.gz | sudo dd of=$DEV_SD  # may take several min.
     $ sudo sync
     $ sudo fsck.vfat -fvp  $DEV_SD'1'   # verify fat
 
