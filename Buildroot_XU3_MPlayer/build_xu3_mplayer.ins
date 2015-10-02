@@ -885,7 +885,6 @@ ___________________________________________________
 
     Install Compressed Disk Image
 ___________________________________________________
-###IMG_URL_PATH="https://github.com/glscantlen/Binaries/raw/master/instructions/Buildroot_XU3_MPlayer"
 
  ! Flash the microSD. The device path will be something like "/dev/sdX" or "/dev/mmcX"
    replace sdX in the following instructions with correct device name for the microSD
@@ -897,6 +896,7 @@ ___________________________________________________
     $ sudo umount $DEV_SD? # un-mount all partitions
 
  - Download and flash the disk image onto the microSD
+    $ IMG_URL_PATH="https://github.com/glscantlen/Binaries/raw/master/instructions/Buildroot_XU3_MPlayer"
     $ wget $IMG_URL_PATH/vdisk.img.gz -O /tmp/VD_ODROID.img.gz
     $ zcat -v /tmp/VD_ODROID.img.gz | sudo dd of=$DEV_SD  # may take several min.
     $ sudo sync
