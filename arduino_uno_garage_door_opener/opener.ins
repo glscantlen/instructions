@@ -40,14 +40,12 @@ that is installed in the Geni opener.
     $ cd ~/garage_door_opener/
     $ wget $REPO_URL_PATH/opener/opener.hex
 
- # FIXME: Some jpeg files are too big
-
  ? IF you want to upload the microcode to an Arduino UNO:
    Initially, for testing, I used an UNO with jumpers to the Geni
    opener controller circuit. This command will upload the micro-
    code "opener.hex" to the UNO via USB. The I/O connections to
    the Geni controller circuit is defined with a schematic. See
-   $REPO_URL_PATH/intrcnct_schem.jpg
+   https://github.com/glscantlen/instructions/blob/master/arduino_uno_garage_door_opener/intrcnct_schem.jpg
     - Connect the Ubuntu host USB to the UNO as instructed above.
     $ avrdude -p atmega328p -c avr109 -P /dev/ttyACM0 -b 57600 -D -U flash:w:opener.hex:i
 
@@ -55,7 +53,7 @@ that is installed in the Geni opener.
    ATmega328p. This instruction uses an Arduino YUN as an ISP
    programmer. And a custom ISP cable was built that breakes out
    the 'reset' signal to a movable I/O pin, connect to I/O-10.
-   See $REPO_URL_PATH/breakout_cable.jpg
+   See https://github.com/glscantlen/instructions/blob/master/arduino_uno_garage_door_opener/breakout_cable.jpg
 
     # Download "yun_isp.hex" for YUN/Leanardo/Micro. This micro-
       code is built from modified source code in the Arduino SDK
@@ -73,15 +71,19 @@ that is installed in the Geni opener.
     $ avrdude -p atmega32u4 -c avr109 -P /dev/ttyACM0 -b 57600 -D -U flash:w:yun_isp.hex:i
 
     # A circuit board was built and installed on the Geni garage
-      door opener. See $REPO_URL_PATH/board_mod.JPG This board
+      door opener.
+      See https://github.com/glscantlen/instructions/blob/master/arduino_uno_garage_door_opener/board_mod.JPG
+      This board
       holds the standalone ATmega328p and interface components
       including a 6 pin header to connect the ISP program cable.
       This circuit is defined with a schematic. See
-      $REPO_URL_PATH/intrcnct_schem.jpg.
+      https://github.com/glscantlen/instructions/blob/master/arduino_uno_garage_door_opener/intrcnct_schem.jpg.
     - Connect the break-out end of the ISP program cable to the
       YUN. Connect the break-out wire to the YUN's I/O-10. Connect
       the remaining end of the program cable to the added circuit
-      board. See $REPO_URL_PATH/yun2ctrl.jpg. Note, a jumper to
+      board. See
+      https://github.com/glscantlen/instructions/blob/master/arduino_uno_garage_door_opener/yun2ctrl.jpg
+      Note, a jumper to
       VCC may be required to power the board from the ISP cable.
     $ avrdude -p atmega328p -c stk500v1 -P /dev/ttyACM0 -b 19200 -U flash:w:opener.hex:i 
 
@@ -95,7 +97,7 @@ that is installed in the Geni opener.
        - Connect the break-out end of the ISP program cable to the
          YUN. Connect the break-out wire to the YUN's I/O-10. Connect
          the remaining end of the program cable to the UNO ICSP header.
-         See $REPO_URL_PATH/yun2uno.JPG
+         See https://github.com/glscantlen/instructions/blob/master/arduino_uno_garage_door_opener/yun2uno.JPG
        $ avrdude -p atmega328p -c stk500v1 -P /dev/ttyACM0 -b 19200 -e -U lock:w:0x3F:m -U efuse:w:0x05:m -U hfuse:w:0xDA:m -U lfuse:w:0xE2:m 
        ? IF you want to revert the bootloader back to the original UNO:
           $ avrdude -p atmega328p -c stk500v1 -P /dev/ttyACM0 -b 19200 -e -U lock:w:0x3F:m -U efuse:w:0x05:m -U hfuse:w:0xDE:m -U lfuse:w:0xFF:m 
