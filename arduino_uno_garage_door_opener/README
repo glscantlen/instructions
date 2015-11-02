@@ -1,0 +1,110 @@
+This folder contains instructions developed from notes taken during
+the repair of my garage door opener. I have a Geni 1/2HP screw drive
+garage door opener that failed several years ago. It was time over
+due to repare or replace it and save my back of strain from opening
+the door manually. As most engineers; I first belived I can repair
+the opener. This README is a summery of how I repaired the door
+opener using an Arduino UNO. The "opener.ins" in this folder will
+detail the software procedures I used.
+
+________________________________________
+What's Wrong with My Garage Door Opener ?
+
+   I had a good idea of the faults from testing it years ago, when
+   it first failed. The safty control circuit was failing even
+   though the IR beam emitter and sensor were functioning, varified
+   by testing with a know good sensor. The door opener contained a
+   controller circuit board that processes input signals from the
+   wall switch and remote. This controller board also switched the
+   110vac through relays to run the opener motor up and down and
+   turn on it's light. Geni no longer manufacturs this controller
+   board and I would need to replace faulty components on this one.
+   At this point a sensible engineer would simply replace the entire
+   opener as it's cost of approx. $180/US is much less then my labor
+   would be to repair the controller board. But I like the challange
+   and promised not to charge myself for the entertainment. The
+   following images depict the opener and controler board
+   location.
+
+   /home/glscantlen/github/instructions/arduino_uno_garage_door_opener/opener.jpg
+   /home/glscantlen/github/instructions/arduino_uno_garage_door_opener/cntrl_board.jpg
+
+_____________________________________
+Reverse Engineer the Controller Board.
+
+   After testing several board componentents involved in the safty
+   signal I realized the problem was most likely an intigrated
+   circuit manufactured by Micrel ( http://www.micrel.com/ ). This
+   component, like the controller board, is no longer available. In
+   testing the board components I discovered most of it's internal
+   design and realized the Micrel controller IC could be replaced
+   with a microcontroller, like used in the Arduino kits. Further
+   detail of the controller board would be required the correctly
+   interface to an ATmega328P, used in the Arduino UNO. These micro-
+   controllers can also be purchased sepeatly at approx. $3/US and
+   the UNO could be used to develop the code for a stand-alone
+   ATmega328P. I then created a schematic of the controller board.
+
+   /home/glscantlen/github/instructions/arduino_uno_garage_door_opener/board_org.jpg
+   /home/glscantlen/github/instructions/arduino_uno_garage_door_opener/cntrl_schem.jpg
+
+_________________________________
+Build a S/W development test-bed.
+
+   Note, the pin numbers circled in the center of the schematic are
+   for the Micrel controller IC. I used the faulty controller board,
+   removing the Micrel IC, to build a hardware test bed for the
+   Arduino UNO. One at a time, starting with ground, I connected
+   I/O signals from the missing Micrel IC to the UNO, writting C
+   code functions to support the Micrel I/O function. To avoid some
+   confusion I selected I/O ports on the UNO that match the Micrel
+   IC pin numbers. The only additional component required for the
+   UNO was a grounding resistor on the radio remote signal. This
+   resistor was needed to disipate voltage from the open collector
+   at Micrel IC pin 3. Initially I used LEDs to disply the state
+   of the motor & light relays. Note the #defined I/O ports in
+   opener.cpp
+
+   https://www.arduino.cc/en/uploads/Main/Arduino_Uno_Rev3-schematic.pdf
+   /home/glscantlen/test_arduino_uno/opener.cpp
+
+__________________________________
+Install the stand-alone ATmega328P
+
+   With the software nearly completed it was time for final tests.
+   I needed to transfer the software to a stand-alone ATmega328P
+   that could be installed onto the controller board. I have an
+   Arduino YUN that I used to create an ISP programmer for the
+   stand-alone ATmega328P. There are many tutorials on-line that
+   describe how to do this. I can reference them later. But to
+   keep it simple I used an ICSP cable with a break-out for the
+   slave interrupt. This break-out wire connected to a different
+   output pin on the YUN. There are instructions in "opener.ins"
+   that describe how to modify the ArduinoISP code, compile,
+   upload, and connect the cable to the Arduino YUN. Note, I only
+   had one ATmega328p and it was on the UNO board. It needed to
+   be flashed with a new bootloader for an internal 8MHz clock.
+   This flash was uploaded with the break-out cable while the
+   ATmega328p was still on the UNO board. Afterwards, I could move
+   it to the controller board where there is no 16MHz crystal.
+   I also had to replace the 8V regulator on the controller board
+   with the required 5V for ATmega328P. The finished controller
+   board can now be used with the break-out cable to re-program
+   the ATmega328P.
+
+   /home/glscantlen/github/instructions/arduino_uno_garage_door_opener/breakout_cable.jpg
+   /home/glscantlen/github/instructions/arduino_uno_garage_door_opener/yun2uno.jpg
+   /home/glscantlen/github/instructions/arduino_uno_garage_door_opener/intrcnct_schem.jpg
+   /home/glscantlen/github/instructions/arduino_uno_garage_door_opener/board_mod.jpg
+   /home/glscantlen/github/instructions/arduino_uno_garage_door_opener/yun2ctrl.jpg
+   /home/glscantlen/github/instructions/arduino_uno_garage_door_opener/removed.jpg
+
+_______________
+Reference:
+https://www.arduino.cc/en/Tutorial/ArduinoISP
+https://www.arduino.cc/en/Tutorial/ArduinoToBreadboard
+http://forum.arduino.cc/index.php?topic=156863.15
+http://www.instructables.com/id/Atmega-Standalone-Running-without-crystal-oscillat/
+
+
+
