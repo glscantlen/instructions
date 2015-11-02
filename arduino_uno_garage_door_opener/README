@@ -26,8 +26,8 @@ What's Wrong with My Garage Door Opener ?
    following images depict the opener and controler board
    location.
 
-   /home/glscantlen/github/instructions/arduino_uno_garage_door_opener/opener.jpg
-   /home/glscantlen/github/instructions/arduino_uno_garage_door_opener/cntrl_board.jpg
+   https://github.com/glscantlen/instructions/blob/master/arduino_uno_garage_door_opener/opener.jpg
+   https://github.com/glscantlen/instructions/blob/master/arduino_uno_garage_door_opener/cntrl_board.jpg
 
 _____________________________________
 Reverse Engineer the Controller Board.
@@ -45,8 +45,8 @@ Reverse Engineer the Controller Board.
    the UNO could be used to develop the code for a stand-alone
    ATmega328P. I then created a schematic of the controller board.
 
-   /home/glscantlen/github/instructions/arduino_uno_garage_door_opener/board_org.jpg
-   /home/glscantlen/github/instructions/arduino_uno_garage_door_opener/cntrl_schem.jpg
+   https://github.com/glscantlen/instructions/blob/master/arduino_uno_garage_door_opener/board_org.jpg
+   https://github.com/glscantlen/instructions/blob/master/arduino_uno_garage_door_opener/cntrl_schem.jpg
 
 _________________________________
 Build a S/W development test-bed.
@@ -66,7 +66,7 @@ Build a S/W development test-bed.
    opener.cpp
 
    https://www.arduino.cc/en/uploads/Main/Arduino_Uno_Rev3-schematic.pdf
-   /home/glscantlen/test_arduino_uno/opener.cpp
+   https://github.com/glscantlen/instructions/blob/master/arduino_uno_garage_door_opener/opener/opener.cpp
 
 __________________________________
 Install the stand-alone ATmega328P
@@ -92,12 +92,12 @@ Install the stand-alone ATmega328P
    board can now be used with the break-out cable to re-program
    the ATmega328P.
 
-   /home/glscantlen/github/instructions/arduino_uno_garage_door_opener/breakout_cable.jpg
-   /home/glscantlen/github/instructions/arduino_uno_garage_door_opener/yun2uno.jpg
-   /home/glscantlen/github/instructions/arduino_uno_garage_door_opener/intrcnct_schem.jpg
-   /home/glscantlen/github/instructions/arduino_uno_garage_door_opener/board_mod.jpg
-   /home/glscantlen/github/instructions/arduino_uno_garage_door_opener/yun2ctrl.jpg
-   /home/glscantlen/github/instructions/arduino_uno_garage_door_opener/removed.jpg
+   https://github.com/glscantlen/instructions/blob/master/arduino_uno_garage_door_opener/breakout_cable.jpg
+   https://github.com/glscantlen/instructions/blob/master/arduino_uno_garage_door_opener/yun2uno.jpg
+   https://github.com/glscantlen/instructions/blob/master/arduino_uno_garage_door_opener/intrcnct_schem.jpg
+   https://github.com/glscantlen/instructions/blob/master/arduino_uno_garage_door_opener/board_mod.jpg
+   https://github.com/glscantlen/instructions/blob/master/arduino_uno_garage_door_opener/yun2ctrl.jpg
+   https://github.com/glscantlen/instructions/blob/master/arduino_uno_garage_door_opener/removed.jpg
 
 _______________
 Reference:
