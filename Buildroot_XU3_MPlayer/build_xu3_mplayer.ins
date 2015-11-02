@@ -301,10 +301,7 @@ requires extra cabling and utilities, see appended instructions:
 
     # To change the default configuration for "eth0' from dynamic to static
       Ref. appended instructions "BuildRoot Menuconfig" System configuration.
-    ? IF you are using DHCP for dynamic IP Address on eth0, the default:
-       - ensure Network interface using DHCP is set to 'eth0' and the
-         "config_eth" script is NOT used in Custom scripts.
-    ? ELSE you are using a static IP. Add the following "config_eth" script.
+    ? IF you are using a static IP. Add the following "config_eth" script.
        - ensure Network interface using DHCP is NOT set to 'eth0' and the
          "config_eth" script is used in Custom scripts before creating image.
        $ nano -w support/scripts/config_eth
@@ -318,6 +315,10 @@ requires extra cabling and utilities, see appended instructions:
          unlink output/target/etc/resolv.conf
          echo "nameserver 8.8.8.8" >> output/target/etc/resolv.conf
        $ chmod +x support/scripts/config_eth
+    ? ELSE you are using DHCP for dynamic IP Address on eth0, the default:
+       ? IF you have made changes to this default configuration:
+          - ensure Network interface using DHCP is set to 'eth0' and the
+            "config_eth" script is NOT used in Custom scripts.
 
 
     - Add "Skeleton" files and folders to be merged into the root filesystem.
@@ -756,7 +757,7 @@ Requires pre-built Linux kernel and BuildRoot image. See above:
     - Continuing in the Serial Console terminal, insert microSD into OdroidXU3.
       Apply power and hold down the "Enter" key, interrupting the bootloader.
     - At the bootloader prompt, "Exynos5422 #", enter "fdisk -p 0".
-      These partition sizes will be needed later.
+      These partition sizes will be needed later. IDs must be 0C & 83
     - now enter "fastboot" and continue on the original desktop terminal
 
  ? IF you want to re-Flash the bootloader(s):
@@ -797,8 +798,8 @@ Requires pre-built Linux kernel and BuildRoot image. See above:
     $ dd if=/dev/zero of=/tmp/VFS_ROOT.img bs=1 count=0 seek=$SIZEOF_DEV_SD2 ; ls -alsh /tmp/VFS_ROOT.img
     $ mkfs.ext4 -O ^has_journal /tmp/VFS_ROOT.img ; ls -alsh /tmp/VFS_ROOT.img
       Warning: Not a block special device. Proceed anyway? (y,n) y
-    $ fsck.ext4 -fv /tmp/VFS_ROOT.img # verify ext4 no journal
-    $ tune2fs -l /tmp/VFS_ROOT.img | grep features
+    $ fsck.ext4 -fv /tmp/VFS_ROOT.img # verify ext4
+    $ tune2fs -l /tmp/VFS_ROOT.img | grep features # no journal
     $ sudo mount -o loop /tmp/VFS_ROOT.img /mnt
     $ sudo tar -xvf output/images/rootfs.tar -C /mnt ; sudo sync ; ls -alsh /tmp/VFS_ROOT.img
     $ sudo make ARCH=arm CROSS_COMPILE=../linaro-4.9/bin/arm-linux-gnueabihf- INSTALL_MOD_PATH=/mnt -C ../linux modules_install
@@ -841,7 +842,7 @@ Requires pre-built Linux kernel and BuildRoot image. See above:
     $ sudo parted /dev/loop0 "mklabel msdos" ; ls -alsh /tmp/VD_ODROID.img
 
     $ echo -e 'Partitioning:\n1) '$SIZE_BOOT bytes' \t '@ $START_BOOT'\n2) '$SIZE_ROOT bytes' \t '@ $START_ROOT
-    $ sudo parted /dev/loop0 mkpart primary fat16 $START_BOOT"B" $(expr $START_ROOT - 1)B
+    $ sudo parted /dev/loop0 mkpart primary fat32 $START_BOOT"B" $(expr $START_ROOT - 1)B
       (I)gnore performance warning
     $ sudo parted /dev/loop0 mkpart primary  ext4 $START_ROOT"B" $(expr $SIZE_IMG - 1)B
     $ sudo parted /dev/loop0 unit B print ; ls -alsh /tmp/VD_ODROID.img
@@ -896,8 +897,8 @@ ___________________________________________________
     $ sudo umount $DEV_SD? # un-mount all partitions
 
  - Download and flash the disk image onto the microSD
-    $ IMG_URL_PATH="https://github.com/glscantlen/Binaries/raw/master/instructions/Buildroot_XU3_MPlayer"
-    $ wget $IMG_URL_PATH/vdisk.img.gz -O /tmp/VD_ODROID.img.gz
+   ###IMG_URL_PATH="https://github.com/glscantlen/Binaries/raw/master/instructions/Buildroot_XU3_MPlayer"
+   ###wget $IMG_URL_PATH/vdisk.img.gz -O /tmp/VD_ODROID.img.gz
     $ zcat -v /tmp/VD_ODROID.img.gz | sudo dd of=$DEV_SD  # may take several min.
     $ sudo sync
     $ sudo fsck.vfat -fvp  $DEV_SD'1'   # verify fat
