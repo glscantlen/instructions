@@ -1,12 +1,34 @@
 
 BASENAME ?= opener
 AVR_PATH ?= /usr/bin
-AVR_MMCU ?= atmega328p
-AVR_FREQ ?= 8000000L
 
 AVR_PROG ?= stk500v1
 PROGPORT ?= 0
 PROGBAUD ?= 19200
+
+
+ifdef CORE_DEV
+ifeq ($(CORE_DEV),ARDUINO_AVR_UNO)
+AVR_MMCU ?= atmega328p
+AVR_FREQ ?= 16000000L
+CORE_PID ?= 0x0043
+endif
+ifeq ($(CORE_DEV),ARDUINO_AVR_YUN)
+AVR_MMCU ?= atmega32u4
+AVR_FREQ ?= 16000000L
+CORE_PID ?= 0x8041
+endif
+ifeq ($(CORE_DEV),ARDUINO_AVR_MICRO)
+AVR_MMCU ?= atmega32u4
+AVR_FREQ ?= 16000000L
+CORE_PID ?= 0x8037
+endif
+endif
+
+CORE_DEV ?= ARDUINO_AVR_UNO
+CORE_PID ?= 0x0043
+AVR_MMCU ?= atmega328p
+AVR_FREQ ?= 8000000L
 
 AVRFLAGS = -g -mmcu=$(AVR_MMCU)
 AVRCFLAGS = -Os -w -ffunction-sections -fdata-sections -MMD
@@ -22,11 +44,11 @@ ASMCORES = $(wildcard core/*.S)
 
 COREOBJS = $(GPPCORES:.cpp=.o)  $(GCCCORES:.c=.o)  $(ASMCORES:.S=.asm.o)
 #COREDEF = -DF_CPU=16000000L -DARDUINO=10606 -DARDUINO_AVR_YUN -DARDUINO_ARCH_AVR -DUSB_VID=0x2341 -DUSB_PID=0x8041 -DUSB_MANUFACTURER="Unknown" -DUSB_PRODUCT=\"Arduino\ Yun\"
-COREDEF = -DF_CPU=$(AVR_FREQ) -DARDUINO=10606 -DARDUINO_AVR_UNO -DARDUINO_ARCH_AVR
-COREDEF += -DUSB_VID=0x2341 -DUSB_PID=0x8041 -DUSB_MANUFACTURER="Unknown" -DUSB_PRODUCT=\"Arduino\"
+COREDEF = -DF_CPU=$(AVR_FREQ) -DARDUINO=10606 -D$(CORE_DEV) -DARDUINO_ARCH_AVR
+COREDEF += -DUSB_VID=0x2341 -DUSB_PID=$(CORE_PID) -DUSB_MANUFACTURER="Unknown" -DUSB_PRODUCT=\"Arduino\"
 #COREINC = -Icore -Iyun
 #COREINC = -Icore -Istandard
-COREINC = -Icore -Ivariants/$(AVR_MMCU)
+COREINC = -Icore -Ivariants/$(CORE_DEV)
 
 TARGET = $(BASENAME).elf
 EEPROM = $(BASENAME).eep $(BASENAME).hex
@@ -61,7 +83,12 @@ eeprom: $(EEPROM)
 upload: $(BASENAME).hex
 #	/bin/stty -F /dev/ttyACM0 1200 ; sleep 1 ; avrdude -p atmega32u4 -c avr109 -P /dev/ttyACM0 -b 57600 -D -U flash:w:$<:i
 #	avrdude -p $(AVR_MMCU) -c arduino -P /dev/ttyACM0 -b 115200 -D -U flash:w:$<:i 
+ifneq ($(AVR_PROG),stk500v1)
+	/bin/stty -F /dev/ttyACM$(PROGPORT) 1200 ; sleep 1
+	avrdude -p $(AVR_MMCU) -c $(AVR_PROG) -P /dev/ttyACM$(PROGPORT) -b $(PROGBAUD) -D -U flash:w:$<:i 
+else
 	avrdude -p $(AVR_MMCU) -c $(AVR_PROG) -P /dev/ttyACM$(PROGPORT) -b $(PROGBAUD) -U flash:w:$<:i 
+endif
 
 $(EEPROM): $(TARGET)
 	$(AVR_PATH)/avr-objcopy -O ihex -j .eeprom --set-section-flags=.eeprom=alloc,load --no-change-warnings --change-section-lma .eeprom=0  $(TARGET) $(BASENAME).eep 

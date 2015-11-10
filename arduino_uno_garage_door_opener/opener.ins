@@ -1,318 +1,133 @@
 ________________________________________________________________
-These procedures use a ATmega328 to replace a faulty, discontinued,
-controller IC on an old Geni garage door opener. The procedures 
+These procedures use a ATmega328p to replace a faulty, discontinued,
+controller IC on an old Genie garage door opener. The procedures 
 were executed on an Ubuntu 14.04 desktop system and use an Arduino
 UNO to develop and test the initial software. Also in these
-procedures the software can be uploaded to a standalone ATmega328
-that is installed in the Geni opener.
-###REPO_URL_PATH="https://github.com/glscantlen/instructions/raw/master/uno_garage_door_opener"
+procedures the software can be uploaded to a standalone ATmega328p
+that is installed in the Genie opener. You will need at a minimum one
+Arduino UNO or an Arduino-Micro/YUN with a stand-alone ATmega328P.
+Other hardware information is in the "README" file in this folder.
 
 
- # install the AVR compiler tools and avrdude, utilities for
-   building and uploading ATmega328 code.
- $ sudo apt-get install avrdude gcc-avr avr-libc
-
- - Connect Ubuntu host USB to the UNO USB device
- $ dmesg | grep ttyACM     # Note ATmega328 uart = /dev/ttyACM*
+ - Connect Ubuntu host USB to the Arduino USB device
  $ lsusb | grep -i arduino # Note the VID:PID for following rules
+ $ dmesg | grep ttyACM     # Note Arduino USB-uart = /dev/ttyACM*
+ ! Notice, if you have multiple Arduino devices connected to the
+   Ubuntu host then "/dev/ttyACM0" in following avrdude commands
+   may need to be changed.
 
 
- # Add normal user access to the UNO USB device
+ # Add normal user access to the Arduino USB device
  $ sudo nano -w /lib/udev/rules.d/70-arduino-usb.rules 
    KERNEL=="ttyACM*", MODE="0666"
    ACTION=="add|change", SUBSYSTEM=="usb"
-   ATTRS{idVendor}=="2341", ATTRS{idProduct}=="8041|0043"
+   ATTRS{idVendor}=="2341", ATTRS{idProduct}=="8041|8037|0043"
    TAG+="uaccess"
  $ sudo udevadm control --reload-rules
  $ sudo udevadm trigger
 
 
- # Downlod the "opener" code that will eventually be uploaded to the
-   stand-alone ATmega328p. This code can also be used for initial
-   software testing with an Arduino UNO.
- ? IF you want to build the ATmega328p code or modify the source.
-    $ sudo apt-get install subversion
-    $ svn export https://github.com/glscantlen/instructions/trunk/uno_garage_door_opener/opener ~/garage_door_opener
-    $ cd ~/garage_door_opener/
-    $ make eeprom
- ? ELSE can get a pre-built "opener" microcode
-    $ mkdir ~/garage_door_opener/
-    $ cd ~/garage_door_opener/
-    $ wget $REPO_URL_PATH/opener/opener.hex
+ # install the source code, AVR compiler tools and utilities for
+   building and uploading "opener" to an Arduino/AVR device.
+ $ sudo apt-get install avrdude gcc-avr avr-libc subversion
+ $ svn export https://github.com/glscantlen/instructions/trunk/arduino_uno_garage_door_opener/opener ~/garage_door_opener
+ $ cd ~/garage_door_opener/
 
+   __________________________________________
  ? IF you want to upload the microcode to an Arduino UNO:
-   Initially, for testing, I used an UNO with jumpers to the Geni
-   opener controller circuit. This command will upload the micro-
-   code "opener.hex" to the UNO via USB. The I/O connections to
-   the Geni controller circuit is defined with a schematic. See
-   intrcnct_schem.jpg
-    - Connect the Ubuntu host USB to the UNO as instructed above.
-    $ avrdude -p atmega328p -c avr109 -P /dev/ttyACM0 -b 57600 -D -U flash:w:opener.hex:i
+   Initially, for testing, I used an UNO with jumpers to the Genie
+   garage door opener. The I/O connections to the Genie controller
+   circuit is defined with a schematic, "intrcnct_schem.jpg". The
+   following steps will upload the micro-code "opener.hex" to
+   the UNO via it's USB.
+    - Connect the Ubuntu host USB to the UNO USB device.
+    ! Notice, the "opener" microcode is built by default for an
+      internal 8MHz clock. If it is run on a 16MHz UNO the opener
+      functions will run 2x faster then normal.
+    ? IF you want to rebuild the opener microcode for a 16MHz UNO:
+       $ make clean
+       $ make AVR_FREQ=16000000L eeprom
+    $ avrdude -p atmega328p -c arduino -P /dev/ttyACM0 -b 115200 -D -U flash:w:opener.hex:i
 
- ? ELSE you'll need an ISP programer to upload to a stand-alone
+   __________________________________________
+ ? ELSE you'll need an ISP programmer to upload to a stand-alone
    ATmega328p. This instruction uses an Arduino YUN as an ISP
-   programmer. And a custom ISP cable was built that breakes out
-   the 'reset' signal to a movable I/O pin, connect to I/O-10.
-   See breakout_cable.jpg
+   programmer running "yun_isp.hex" microcode. Yun_isp emulates
+   an ISP programmer using Arduino hardware. It's default build
+   is for the Arduino YUN. The origin for yun_isp can be found in
+   the Arduino SDK, "examples/11.ArduinoISP". A modification was
+   made to this source that changes the ISP-reset to an available
+   I/O pin on the YUN, I/O-10. Beware, "yun_isp.hex" has only been
+   tested on the Arduino-Micro & Yun hardware. There is an appended
+   instruction that exemplifies how to rebuild yun_isp, specifically
+   for the Ardino-Micro.
 
-    # Download "yun_isp.hex" for YUN/Leanardo/Micro. This micro-
-      code is built from modified source code in the Arduino SDK
-      "examples/11.ArduinoISP". ArduinoISP will emulate an ISP
-      programmer using an Arduino board. A modification was made
-      to the source that changes the reset pin#(SS) defined at
-      ~line 47. Caution: "yun_isp.hex" has only been tested on
-      the Arduino YUN hardware.
-    $ wget $REPO_URL_PATH/yun_isp.hex
+    # Load "yun_isp.hex", the ISP emulator, onto a YUN/Micro
+    - Connect the Ubuntu host USB to the YUN USB device.
+    $ /bin/stty -F /dev/ttyACM0 1200 ; sleep 1 ; avrdude -p atmega32u4 -c avr109 -P /dev/ttyACM0 -b 57600 -D -U flash:w:yun_isp.hex:i
 
-    # Upload "yun_isp.hex" onto an Arduino YUN.
-    - Connect the Ubuntu host USB to the YUN USB device. Use the
-      instructions for the UNO as an example. Notice, the USB
-      device, "/dev/ttyACM0", may change in the following command.
-    $ avrdude -p atmega32u4 -c avr109 -P /dev/ttyACM0 -b 57600 -D -U flash:w:yun_isp.hex:i
+    # A custom ISP cable was built that connects the YUN's ICSP
+      header to the ICSP of other Arduino/AVR devices. This cable
+      will break-out the 'reset' signal to a movable I/O pin. As
+      mentioned, yun_isp.hex currently uses I/O-10 for this reset.
+      See breakout_cable.jpg. Note the white wire at each end of
+      this cable connects to pin 1 of the ICSP header.
 
-    # A circuit board was built and installed on the Geni garage
-      door opener. See board_mod.JPG. This board holds the
-      standalone ATmega328p and interface components including
-      a 6 pin header to connect the ISP program cable. This
-      circuit is defined with a schematic. See intrcnct_schem.jpg.
+    # A circuit board was built and installed on the Genie garage
+      door opener. See board_mod.JPG and cntrl_schem.jpg. This
+      board holds the standalone ATmega328p and interface components
+      including a 6 pin header to connect the ISP program cable.
+      See intrcnct_schem.jpg and yun2ctrl.jpg.
     - Connect the break-out end of the ISP program cable to the
       YUN. Connect the break-out wire to the YUN's I/O-10. Connect
       the remaining end of the program cable to the added circuit
-      board. See yun2ctrl.jpg. Note, a jumper to VCC may be
-      required to power the board from the ISP cable.
+      board. Leave the USB cable connected as described above.
+      Note on the schematic, a jumper to VCC can be used to power
+      the board from the ISP cable.
+
+    # The "opener.hex" microcode is now loaded onto the ATmega328p
+      to function as a garage door opener.
     $ avrdude -p atmega328p -c stk500v1 -P /dev/ttyACM0 -b 19200 -U flash:w:opener.hex:i 
-
-    ! NOTICE: IF the ATmega328p, to be used on the added circuit
-      board, was originally for an Arduino board then it will need
-      a NON-Crystal bootloader flash. I originally used the
-      ATmega328p that was on the UNO board. BEFORE! I removed it
-      from the UNO board I had to flash the bootloader for an
-      internal 8MHz clock. The following instructions will flash
-      this bootloader onto the UNO.
-       - Connect the break-out end of the ISP program cable to the
-         YUN. Connect the break-out wire to the YUN's I/O-10. Connect
-         the remaining end of the program cable to the UNO ICSP header.
-         See yun2uno.JPG
-       $ avrdude -p atmega328p -c stk500v1 -P /dev/ttyACM0 -b 19200 -e -U lock:w:0x3F:m -U efuse:w:0x05:m -U hfuse:w:0xDA:m -U lfuse:w:0xE2:m 
-       ? IF you want to revert the bootloader back to the original UNO:
-          $ avrdude -p atmega328p -c stk500v1 -P /dev/ttyACM0 -b 19200 -e -U lock:w:0x3F:m -U efuse:w:0x05:m -U hfuse:w:0xDE:m -U lfuse:w:0xFF:m 
-
-     # Note, you can also build the "yun_isp.hex" from source using
-       the following commands. The modified yun_isp.cpp is included
-       with the ATmega328p "opener.cpp" source.
-     $ make clean
-     $ make AVR_MMCU=atmega32u4 AVR_FREQ=16000000L BASENAME=yun_isp AVR_PROG=avr109 PROGBAUD=57600 upload
-     ! If the YUN "programmer is not responding" you may need to
-       reset the USB. Double-click the 32U4-RST button, then rerun
-       the upload command within the 10 sec. upload timeout. There
-       is a 'throbing' red LED to indicate waiting for upload.
+    ? IF you want to rebuild and upload the opener microcode:
+       $ make clean
+       $ make upload
 
 
+_____________________
+APPENDED INSTRUCTIONS
+
+ ! NOTICE: IF the ATmega328p, to be used on the added circuit
+   board, was originally for an Arduino board then it will need
+   a NON-Crystal bootloader flash. I originally used the
+   ATmega328p that was on the UNO board. BUT! before I removed it
+   from the UNO board I had to flash the bootloader for an
+   internal 8MHz clock. The following instructions will flash
+   this bootloader onto the UNO.
+    - Connect the Ubuntu host USB to the YUN USB device.
+    - Connect the break-out end of the ISP program cable to the
+      YUN. Connect the break-out wire to the YUN's I/O-10. Connect
+      the remaining end of the program cable to the UNO ICSP header.
+      See yun2uno.JPG
+    $ avrdude -p atmega328p -c stk500v1 -P /dev/ttyACM0 -b 19200 -e -U lock:w:0x3F:m -U efuse:w:0x05:m -U hfuse:w:0xDA:m -U lfuse:w:0xE2:m 
+    ! The UNO board will no longer function with Arduino software!
+    ? IF you want to revert the bootloader back to it's original:
+       $ wget https://github.com/arduino/Arduino/raw/master/hardware/arduino/avr/bootloaders/optiboot/optiboot_atmega328.hex
+       $ avrdude -p atmega328p -c stk500v1 -P /dev/ttyACM0 -b 19200 -e -U lock:w:0x3F:m -U efuse:w:0x05:m -U hfuse:w:0xDE:m -U lfuse:w:0xFF:m 
+       $ avrdude -p atmega328p -c stk500v1 -P /dev/ttyACM0 -b 19200 -U flash:w:optiboot_atmega328.hex:i -U lock:w:0x0F:m
 
 
-
-_____________________________________STOP___________________________________________
-####################################################################################
-####################################################################################
-####################################################################################
-
-
-
- $ cp arduino-nightly/examples/11.ArduinoISP/ArduinoISP/ArduinoISP.ino ./yun_isp.cpp
- $ nano -w yun_isp.cpp
-   ...
-   #define RESET     10
-   ...
-   #include "Arduino.h"
-   ...
- # build and upload yun_isp into the Arduino-YUN
-###...TBD... $ diff yun_isp.cpp yun_isp/yun_isp.ino 
-
-
- # Build a ATmega328p breadboard
- ! Notice: if the ATmega328p used on the breadboard was originally
-   from an Arduino board then it probably needs a crystal temperarily
-   installed for the NON-Crystal bootloader flash. Or you could try
-   a bootloader flash before removing it from the UNO board.
-   http://phaq.phunsites.net/2013/09/12/use-arduino-micro-as-isp-with-atmega-on-a-breadboard/
-###...TBD...https://www.arduino.cc/en/Tutorial/ArduinoToBreadboard
-
-
- # Flash bootloader for NO-CRYSTAL and upload opener.hex - thru the YUN into the ATmega328p
-###mkdir ~/Arduino/hardware
-###download https://www.arduino.cc/en/uploads/Tutorial/breadboard-1-6-x.zip
-###extract into ~/Arduino/hardware/
-###/media/glscantlen/ffa3f085-ba7b-48dd-a3a9-2b79d2e5ea59/home/glscantlen/test_arduino_yun/arduino-nightly/arduino
-###TOOLS -> BOARD -> ATmega328 on breadboard
- # burn bootloader
-###TOOLS -> PROGRAMMER -> Arduino as ISP
-###TOOLS -> BURNBOOTLOADER
-###SKETCH -> UPLOAD USING PROGRAMMER
- ! Notice: DO NOT use only UPLOAD ! This generates data errors and may require power cycle to recover.
-###...TBD...
- $ avrdude -p atmega328p -c stk500v1 -P /dev/ttyACM0 -b 19200 -e -U lock:w:0x3F:m -U efuse:w:0x05:m -U hfuse:w:0xDA:m -U lfuse:w:0xE2:m 
-//   /usr/bin/avr-g++ -mmcu=atmega328p test_avr.cpp -o test_avr.elf
-//###/usr/bin/avr-objcopy -O ihex -j .eeprom --set-section-flags=.eeprom=alloc,load --no-change-warnings --change-section-lma .eeprom=0  test_avr.elf test_avr.eep 
-//   /usr/bin/avr-objcopy -O ihex -R .eeprom  test_avr.elf  test_avr.hex
-//   /usr/bin/avrdude -p atmega328p -c arduino -P /dev/ttyACM0 -b 115200 -D -U flash:w:test_avr.hex:i 
-###avrdude -p atmega328p -c avr109 -P /dev/ttyACM0 -b 57600 -D -U flash:w:opener.hex:i
-###avrdude -v -patmega328p -carduino -P/dev/ttyACM0 -b115200 -D -Uflash:w:/tmp/build1944614595505626284.tmp/sketch/Blink.cpp.hex:i 
-###avrdude -p atmega328p -c stk500v1 -P /dev/ttyACM0 -b 19200 -U flash:w:opener.hex:i 
- $ make BASENAME=opener upload
-
-
-
-
-
-
-
-
-
->>>/tools/avr/bin/avr-g++ -c -g -Os -w -std=gnu++11 -fno-exceptions -ffunction-sections -fdata-sections -fno-threadsafe-statics -MMD -mmcu=atmega328p -DF_CPU=16000000L -DARDUINO=10606 -DARDUINO_AVR_UNO -DARDUINO_ARCH_AVR -I>>>/arduino/avr/cores/arduino -I>>>/arduino/avr/variants/standard /tmp/build1944614595505626284.tmp/sketch/Blink.cpp -o /tmp/build1944614595505626284.tmp/sketch/Blink.cpp.o 
->>>/tools/avr/bin/avr-gcc -c -g -x assembler-with-cpp                                                                                -mmcu=atmega328p -DF_CPU=16000000L -DARDUINO=10606 -DARDUINO_AVR_UNO -DARDUINO_ARCH_AVR -I>>>/arduino/avr/cores/arduino -I>>>/arduino/avr/variants/standard >>>/arduino/avr/cores/arduino/wiring_pulse.S       -o /tmp/build1944614595505626284.tmp/core/wiring_pulse.S.o 
->>>/tools/avr/bin/avr-gcc -c -g -Os -w -std=gnu11                   -ffunction-sections -fdata-sections                         -MMD -mmcu=atmega328p -DF_CPU=16000000L -DARDUINO=10606 -DARDUINO_AVR_UNO -DARDUINO_ARCH_AVR -I>>>/arduino/avr/cores/arduino -I>>>/arduino/avr/variants/standard >>>/arduino/avr/cores/arduino/wiring_pulse.c       -o /tmp/build1944614595505626284.tmp/core/wiring_pulse.c.o 
->>>/tools/avr/bin/avr-gcc -c -g -Os -w -std=gnu11                   -ffunction-sections -fdata-sections                         -MMD -mmcu=atmega328p -DF_CPU=16000000L -DARDUINO=10606 -DARDUINO_AVR_UNO -DARDUINO_ARCH_AVR -I>>>/arduino/avr/cores/arduino -I>>>/arduino/avr/variants/standard >>>/arduino/avr/cores/arduino/wiring_analog.c      -o /tmp/build1944614595505626284.tmp/core/wiring_analog.c.o 
->>>/tools/avr/bin/avr-gcc -c -g -Os -w -std=gnu11                   -ffunction-sections -fdata-sections                         -MMD -mmcu=atmega328p -DF_CPU=16000000L -DARDUINO=10606 -DARDUINO_AVR_UNO -DARDUINO_ARCH_AVR -I>>>/arduino/avr/cores/arduino -I>>>/arduino/avr/variants/standard >>>/arduino/avr/cores/arduino/wiring_digital.c     -o /tmp/build1944614595505626284.tmp/core/wiring_digital.c.o 
->>>/tools/avr/bin/avr-gcc -c -g -Os -w -std=gnu11                   -ffunction-sections -fdata-sections                         -MMD -mmcu=atmega328p -DF_CPU=16000000L -DARDUINO=10606 -DARDUINO_AVR_UNO -DARDUINO_ARCH_AVR -I>>>/arduino/avr/cores/arduino -I>>>/arduino/avr/variants/standard >>>/arduino/avr/cores/arduino/wiring.c             -o /tmp/build1944614595505626284.tmp/core/wiring.c.o 
->>>/tools/avr/bin/avr-gcc -c -g -Os -w -std=gnu11                   -ffunction-sections -fdata-sections                         -MMD -mmcu=atmega328p -DF_CPU=16000000L -DARDUINO=10606 -DARDUINO_AVR_UNO -DARDUINO_ARCH_AVR -I>>>/arduino/avr/cores/arduino -I>>>/arduino/avr/variants/standard >>>/arduino/avr/cores/arduino/wiring_shift.c       -o /tmp/build1944614595505626284.tmp/core/wiring_shift.c.o 
->>>/tools/avr/bin/avr-gcc -c -g -Os -w -std=gnu11                   -ffunction-sections -fdata-sections                         -MMD -mmcu=atmega328p -DF_CPU=16000000L -DARDUINO=10606 -DARDUINO_AVR_UNO -DARDUINO_ARCH_AVR -I>>>/arduino/avr/cores/arduino -I>>>/arduino/avr/variants/standard >>>/arduino/avr/cores/arduino/hooks.c              -o /tmp/build1944614595505626284.tmp/core/hooks.c.o 
->>>/tools/avr/bin/avr-gcc -c -g -Os -w -std=gnu11                   -ffunction-sections -fdata-sections                         -MMD -mmcu=atmega328p -DF_CPU=16000000L -DARDUINO=10606 -DARDUINO_AVR_UNO -DARDUINO_ARCH_AVR -I>>>/arduino/avr/cores/arduino -I>>>/arduino/avr/variants/standard >>>/arduino/avr/cores/arduino/WInterrupts.c        -o /tmp/build1944614595505626284.tmp/core/WInterrupts.c.o 
->>>/tools/avr/bin/avr-g++ -c -g -Os -w -std=gnu++11 -fno-exceptions -ffunction-sections -fdata-sections -fno-threadsafe-statics -MMD -mmcu=atmega328p -DF_CPU=16000000L -DARDUINO=10606 -DARDUINO_AVR_UNO -DARDUINO_ARCH_AVR -I>>>/arduino/avr/cores/arduino -I>>>/arduino/avr/variants/standard >>>/arduino/avr/cores/arduino/abi.cpp              -o /tmp/build1944614595505626284.tmp/core/abi.cpp.o 
->>>/tools/avr/bin/avr-g++ -c -g -Os -w -std=gnu++11 -fno-exceptions -ffunction-sections -fdata-sections -fno-threadsafe-statics -MMD -mmcu=atmega328p -DF_CPU=16000000L -DARDUINO=10606 -DARDUINO_AVR_UNO -DARDUINO_ARCH_AVR -I>>>/arduino/avr/cores/arduino -I>>>/arduino/avr/variants/standard >>>/arduino/avr/cores/arduino/HardwareSerial1.cpp  -o /tmp/build1944614595505626284.tmp/core/HardwareSerial1.cpp.o 
->>>/tools/avr/bin/avr-g++ -c -g -Os -w -std=gnu++11 -fno-exceptions -ffunction-sections -fdata-sections -fno-threadsafe-statics -MMD -mmcu=atmega328p -DF_CPU=16000000L -DARDUINO=10606 -DARDUINO_AVR_UNO -DARDUINO_ARCH_AVR -I>>>/arduino/avr/cores/arduino -I>>>/arduino/avr/variants/standard >>>/arduino/avr/cores/arduino/new.cpp              -o /tmp/build1944614595505626284.tmp/core/new.cpp.o 
->>>/tools/avr/bin/avr-g++ -c -g -Os -w -std=gnu++11 -fno-exceptions -ffunction-sections -fdata-sections -fno-threadsafe-statics -MMD -mmcu=atmega328p -DF_CPU=16000000L -DARDUINO=10606 -DARDUINO_AVR_UNO -DARDUINO_ARCH_AVR -I>>>/arduino/avr/cores/arduino -I>>>/arduino/avr/variants/standard >>>/arduino/avr/cores/arduino/CDC.cpp              -o /tmp/build1944614595505626284.tmp/core/CDC.cpp.o 
->>>/tools/avr/bin/avr-g++ -c -g -Os -w -std=gnu++11 -fno-exceptions -ffunction-sections -fdata-sections -fno-threadsafe-statics -MMD -mmcu=atmega328p -DF_CPU=16000000L -DARDUINO=10606 -DARDUINO_AVR_UNO -DARDUINO_ARCH_AVR -I>>>/arduino/avr/cores/arduino -I>>>/arduino/avr/variants/standard >>>/arduino/avr/cores/arduino/HardwareSerial3.cpp  -o /tmp/build1944614595505626284.tmp/core/HardwareSerial3.cpp.o 
->>>/tools/avr/bin/avr-g++ -c -g -Os -w -std=gnu++11 -fno-exceptions -ffunction-sections -fdata-sections -fno-threadsafe-statics -MMD -mmcu=atmega328p -DF_CPU=16000000L -DARDUINO=10606 -DARDUINO_AVR_UNO -DARDUINO_ARCH_AVR -I>>>/arduino/avr/cores/arduino -I>>>/arduino/avr/variants/standard >>>/arduino/avr/cores/arduino/PluggableUSB.cpp     -o /tmp/build1944614595505626284.tmp/core/PluggableUSB.cpp.o 
->>>/tools/avr/bin/avr-g++ -c -g -Os -w -std=gnu++11 -fno-exceptions -ffunction-sections -fdata-sections -fno-threadsafe-statics -MMD -mmcu=atmega328p -DF_CPU=16000000L -DARDUINO=10606 -DARDUINO_AVR_UNO -DARDUINO_ARCH_AVR -I>>>/arduino/avr/cores/arduino -I>>>/arduino/avr/variants/standard >>>/arduino/avr/cores/arduino/Stream.cpp           -o /tmp/build1944614595505626284.tmp/core/Stream.cpp.o 
->>>/tools/avr/bin/avr-g++ -c -g -Os -w -std=gnu++11 -fno-exceptions -ffunction-sections -fdata-sections -fno-threadsafe-statics -MMD -mmcu=atmega328p -DF_CPU=16000000L -DARDUINO=10606 -DARDUINO_AVR_UNO -DARDUINO_ARCH_AVR -I>>>/arduino/avr/cores/arduino -I>>>/arduino/avr/variants/standard >>>/arduino/avr/cores/arduino/USBCore.cpp          -o /tmp/build1944614595505626284.tmp/core/USBCore.cpp.o 
->>>/tools/avr/bin/avr-g++ -c -g -Os -w -std=gnu++11 -fno-exceptions -ffunction-sections -fdata-sections -fno-threadsafe-statics -MMD -mmcu=atmega328p -DF_CPU=16000000L -DARDUINO=10606 -DARDUINO_AVR_UNO -DARDUINO_ARCH_AVR -I>>>/arduino/avr/cores/arduino -I>>>/arduino/avr/variants/standard >>>/arduino/avr/cores/arduino/IPAddress.cpp        -o /tmp/build1944614595505626284.tmp/core/IPAddress.cpp.o 
->>>/tools/avr/bin/avr-g++ -c -g -Os -w -std=gnu++11 -fno-exceptions -ffunction-sections -fdata-sections -fno-threadsafe-statics -MMD -mmcu=atmega328p -DF_CPU=16000000L -DARDUINO=10606 -DARDUINO_AVR_UNO -DARDUINO_ARCH_AVR -I>>>/arduino/avr/cores/arduino -I>>>/arduino/avr/variants/standard >>>/arduino/avr/cores/arduino/main.cpp             -o /tmp/build1944614595505626284.tmp/core/main.cpp.o 
->>>/tools/avr/bin/avr-g++ -c -g -Os -w -std=gnu++11 -fno-exceptions -ffunction-sections -fdata-sections -fno-threadsafe-statics -MMD -mmcu=atmega328p -DF_CPU=16000000L -DARDUINO=10606 -DARDUINO_AVR_UNO -DARDUINO_ARCH_AVR -I>>>/arduino/avr/cores/arduino -I>>>/arduino/avr/variants/standard >>>/arduino/avr/cores/arduino/WString.cpp          -o /tmp/build1944614595505626284.tmp/core/WString.cpp.o 
->>>/tools/avr/bin/avr-g++ -c -g -Os -w -std=gnu++11 -fno-exceptions -ffunction-sections -fdata-sections -fno-threadsafe-statics -MMD -mmcu=atmega328p -DF_CPU=16000000L -DARDUINO=10606 -DARDUINO_AVR_UNO -DARDUINO_ARCH_AVR -I>>>/arduino/avr/cores/arduino -I>>>/arduino/avr/variants/standard >>>/arduino/avr/cores/arduino/Print.cpp            -o /tmp/build1944614595505626284.tmp/core/Print.cpp.o 
->>>/tools/avr/bin/avr-g++ -c -g -Os -w -std=gnu++11 -fno-exceptions -ffunction-sections -fdata-sections -fno-threadsafe-statics -MMD -mmcu=atmega328p -DF_CPU=16000000L -DARDUINO=10606 -DARDUINO_AVR_UNO -DARDUINO_ARCH_AVR -I>>>/arduino/avr/cores/arduino -I>>>/arduino/avr/variants/standard >>>/arduino/avr/cores/arduino/WMath.cpp            -o /tmp/build1944614595505626284.tmp/core/WMath.cpp.o 
->>>/tools/avr/bin/avr-g++ -c -g -Os -w -std=gnu++11 -fno-exceptions -ffunction-sections -fdata-sections -fno-threadsafe-statics -MMD -mmcu=atmega328p -DF_CPU=16000000L -DARDUINO=10606 -DARDUINO_AVR_UNO -DARDUINO_ARCH_AVR -I>>>/arduino/avr/cores/arduino -I>>>/arduino/avr/variants/standard >>>/arduino/avr/cores/arduino/HardwareSerial0.cpp  -o /tmp/build1944614595505626284.tmp/core/HardwareSerial0.cpp.o 
->>>/tools/avr/bin/avr-g++ -c -g -Os -w -std=gnu++11 -fno-exceptions -ffunction-sections -fdata-sections -fno-threadsafe-statics -MMD -mmcu=atmega328p -DF_CPU=16000000L -DARDUINO=10606 -DARDUINO_AVR_UNO -DARDUINO_ARCH_AVR -I>>>/arduino/avr/cores/arduino -I>>>/arduino/avr/variants/standard >>>/arduino/avr/cores/arduino/Tone.cpp             -o /tmp/build1944614595505626284.tmp/core/Tone.cpp.o 
->>>/tools/avr/bin/avr-g++ -c -g -Os -w -std=gnu++11 -fno-exceptions -ffunction-sections -fdata-sections -fno-threadsafe-statics -MMD -mmcu=atmega328p -DF_CPU=16000000L -DARDUINO=10606 -DARDUINO_AVR_UNO -DARDUINO_ARCH_AVR -I>>>/arduino/avr/cores/arduino -I>>>/arduino/avr/variants/standard >>>/arduino/avr/cores/arduino/HardwareSerial.cpp   -o /tmp/build1944614595505626284.tmp/core/HardwareSerial.cpp.o 
->>>/tools/avr/bin/avr-g++ -c -g -Os -w -std=gnu++11 -fno-exceptions -ffunction-sections -fdata-sections -fno-threadsafe-statics -MMD -mmcu=atmega328p -DF_CPU=16000000L -DARDUINO=10606 -DARDUINO_AVR_UNO -DARDUINO_ARCH_AVR -I>>>/arduino/avr/cores/arduino -I>>>/arduino/avr/variants/standard >>>/arduino/avr/cores/arduino/HardwareSerial2.cpp  -o /tmp/build1944614595505626284.tmp/core/HardwareSerial2.cpp.o 
-
->>>/tools/avr/bin/avr-ar rcs /tmp/build1944614595505626284.tmp/core/core.a /tmp/build1944614595505626284.tmp/core/wiring_pulse.S.o 
->>>/tools/avr/bin/avr-ar rcs /tmp/build1944614595505626284.tmp/core/core.a /tmp/build1944614595505626284.tmp/core/wiring_pulse.c.o 
->>>/tools/avr/bin/avr-ar rcs /tmp/build1944614595505626284.tmp/core/core.a /tmp/build1944614595505626284.tmp/core/wiring_analog.c.o 
->>>/tools/avr/bin/avr-ar rcs /tmp/build1944614595505626284.tmp/core/core.a /tmp/build1944614595505626284.tmp/core/wiring_digital.c.o 
->>>/tools/avr/bin/avr-ar rcs /tmp/build1944614595505626284.tmp/core/core.a /tmp/build1944614595505626284.tmp/core/wiring.c.o 
->>>/tools/avr/bin/avr-ar rcs /tmp/build1944614595505626284.tmp/core/core.a /tmp/build1944614595505626284.tmp/core/wiring_shift.c.o 
->>>/tools/avr/bin/avr-ar rcs /tmp/build1944614595505626284.tmp/core/core.a /tmp/build1944614595505626284.tmp/core/hooks.c.o 
->>>/tools/avr/bin/avr-ar rcs /tmp/build1944614595505626284.tmp/core/core.a /tmp/build1944614595505626284.tmp/core/WInterrupts.c.o 
->>>/tools/avr/bin/avr-ar rcs /tmp/build1944614595505626284.tmp/core/core.a /tmp/build1944614595505626284.tmp/core/abi.cpp.o 
->>>/tools/avr/bin/avr-ar rcs /tmp/build1944614595505626284.tmp/core/core.a /tmp/build1944614595505626284.tmp/core/HardwareSerial1.cpp.o 
->>>/tools/avr/bin/avr-ar rcs /tmp/build1944614595505626284.tmp/core/core.a /tmp/build1944614595505626284.tmp/core/new.cpp.o 
->>>/tools/avr/bin/avr-ar rcs /tmp/build1944614595505626284.tmp/core/core.a /tmp/build1944614595505626284.tmp/core/CDC.cpp.o 
->>>/tools/avr/bin/avr-ar rcs /tmp/build1944614595505626284.tmp/core/core.a /tmp/build1944614595505626284.tmp/core/HardwareSerial3.cpp.o 
->>>/tools/avr/bin/avr-ar rcs /tmp/build1944614595505626284.tmp/core/core.a /tmp/build1944614595505626284.tmp/core/PluggableUSB.cpp.o 
->>>/tools/avr/bin/avr-ar rcs /tmp/build1944614595505626284.tmp/core/core.a /tmp/build1944614595505626284.tmp/core/Stream.cpp.o 
->>>/tools/avr/bin/avr-ar rcs /tmp/build1944614595505626284.tmp/core/core.a /tmp/build1944614595505626284.tmp/core/USBCore.cpp.o 
->>>/tools/avr/bin/avr-ar rcs /tmp/build1944614595505626284.tmp/core/core.a /tmp/build1944614595505626284.tmp/core/IPAddress.cpp.o 
->>>/tools/avr/bin/avr-ar rcs /tmp/build1944614595505626284.tmp/core/core.a /tmp/build1944614595505626284.tmp/core/main.cpp.o 
->>>/tools/avr/bin/avr-ar rcs /tmp/build1944614595505626284.tmp/core/core.a /tmp/build1944614595505626284.tmp/core/WString.cpp.o 
->>>/tools/avr/bin/avr-ar rcs /tmp/build1944614595505626284.tmp/core/core.a /tmp/build1944614595505626284.tmp/core/Print.cpp.o 
->>>/tools/avr/bin/avr-ar rcs /tmp/build1944614595505626284.tmp/core/core.a /tmp/build1944614595505626284.tmp/core/WMath.cpp.o 
->>>/tools/avr/bin/avr-ar rcs /tmp/build1944614595505626284.tmp/core/core.a /tmp/build1944614595505626284.tmp/core/HardwareSerial0.cpp.o 
->>>/tools/avr/bin/avr-ar rcs /tmp/build1944614595505626284.tmp/core/core.a /tmp/build1944614595505626284.tmp/core/Tone.cpp.o 
->>>/tools/avr/bin/avr-ar rcs /tmp/build1944614595505626284.tmp/core/core.a /tmp/build1944614595505626284.tmp/core/HardwareSerial.cpp.o 
->>>/tools/avr/bin/avr-ar rcs /tmp/build1944614595505626284.tmp/core/core.a /tmp/build1944614595505626284.tmp/core/HardwareSerial2.cpp.o 
-
->>>/tools/avr/bin/avr-gcc -w -Os -Wl,--gc-sections -mmcu=atmega328p -o /tmp/build1944614595505626284.tmp/sketch/Blink.cpp.elf /tmp/build1944614595505626284.tmp/sketch/Blink.cpp.o /tmp/build1944614595505626284.tmp/core/core.a -L/tmp/build1944614595505626284.tmp -lm 
->>>/tools/avr/bin/avr-objcopy -O ihex -j .eeprom --set-section-flags=.eeprom=alloc,load --no-change-warnings --change-section-lma .eeprom=0 /tmp/build1944614595505626284.tmp/sketch/Blink.cpp.elf /tmp/build1944614595505626284.tmp/sketch/Blink.cpp.eep 
->>>/tools/avr/bin/avr-objcopy -O ihex -R .eeprom /tmp/build1944614595505626284.tmp/sketch/Blink.cpp.elf /tmp/build1944614595505626284.tmp/sketch/Blink.cpp.hex 
-
-Sketch uses 1,030 bytes (3%) of program storage space. Maximum is 32,256 bytes.
-Global variables use 9 bytes (0%) of dynamic memory, leaving 2,039 bytes for local variables. Maximum is 2,048 bytes.
-
-
-
-
->>>/tools/avr/bin/avrdude -C>>>/tools/avr/etc/avrdude.conf -v -patmega328p -carduino -P/dev/ttyACM0 -b115200 -D -Uflash:w:/tmp/build1944614595505626284.tmp/sketch/Blink.cpp.hex:i 
-
-avrdude: Version 6.0.1, compiled on Apr 14 2015 at 19:04:16
-         Copyright (c) 2000-2005 Brian Dean, http://www.bdmicro.com/
-         Copyright (c) 2007-2009 Joerg Wunsch
-
-         System wide configuration file is ">>>/tools/avr/etc/avrdude.conf"
-         User configuration file is "/home/glscantlen/.avrduderc"
-         User configuration file does not exist or is not a regular file, skipping
-
-         Using Port                    : /dev/ttyACM0
-         Using Programmer              : arduino
-         Overriding Baud Rate          : 115200
-         AVR Part                      : ATmega328P
-         Chip Erase delay              : 9000 us
-         PAGEL                         : PD7
-         BS2                           : PC2
-         RESET disposition             : dedicated
-         RETRY pulse                   : SCK
-         serial program mode           : yes
-         parallel program mode         : yes
-         Timeout                       : 200
-         StabDelay                     : 100
-         CmdexeDelay                   : 25
-         SyncLoops                     : 32
-         ByteDelay                     : 0
-         PollIndex                     : 3
-         PollValue                     : 0x53
-         Memory Detail                 :
-
-                                  Block Poll               Page                       Polled
-           Memory Type Mode Delay Size  Indx Paged  Size   Size #Pages MinW  MaxW   ReadBack
-           ----------- ---- ----- ----- ---- ------ ------ ---- ------ ----- ----- ---------
-           eeprom        65    20     4    0 no       1024    4      0  3600  3600 0xff 0xff
-           flash         65     6   128    0 yes     32768  128    256  4500  4500 0xff 0xff
-           lfuse          0     0     0    0 no          1    0      0  4500  4500 0x00 0x00
-           hfuse          0     0     0    0 no          1    0      0  4500  4500 0x00 0x00
-           efuse          0     0     0    0 no          1    0      0  4500  4500 0x00 0x00
-           lock           0     0     0    0 no          1    0      0  4500  4500 0x00 0x00
-           calibration    0     0     0    0 no          1    0      0     0     0 0x00 0x00
-           signature      0     0     0    0 no          3    0      0     0     0 0x00 0x00
-
-         Programmer Type : Arduino
-         Description     : Arduino
-         Hardware Version: 3
-         Firmware Version: 4.4
-         Vtarget         : 0.3 V
-         Varef           : 0.3 V
-         Oscillator      : 28.800 kHz
-         SCK period      : 3.3 us
-
-avrdude: AVR device initialized and ready to accept instructions
-
-Reading | ################################################## | 100% 0.00s
-
-avrdude: Device signature = 0x1e950f
-
-
-
-avrdude: reading input file "/tmp/build1944614595505626284.tmp/sketch/Blink.cpp.hex"
-avrdude: writing flash (1030 bytes):
-
-Writing | ################################################## | 100% 0.18s
-
-avrdude: 1030 bytes of flash written
-avrdude: verifying flash memory against /tmp/build1944614595505626284.tmp/sketch/Blink.cpp.hex:
-avrdude: load data flash data from input file /tmp/build1944614595505626284.tmp/sketch/Blink.cpp.hex:
-avrdude: input file /tmp/build1944614595505626284.tmp/sketch/Blink.cpp.hex contains 1030 bytes
-avrdude: reading on-chip flash data:
-
-Reading | ################################################## | 100% 0.15s
-
-avrdude: verifying ...
-avrdude: 1030 bytes of flash verified
-
-
-
-
-
-
-avrdude done.  Thank you.
-
+ ? IF you want to build the "yun_isp.hex" from source use the
+   following commands. These steps will build microcode to run on
+   an Arduino-Micro, CORE_DEV=ARDUINO_AVR_MICRO. The yun_isp.cpp
+   source is included in the same folder with the "opener.cpp".
+    - Connect the Ubuntu host USB to the Ardino USB device.
+    $ make BASENAME=yun_isp clean
+    $ make BASENAME=yun_isp CORE_DEV=ARDUINO_AVR_MICRO AVR_PROG=avr109 PROGBAUD=57600 upload
+    ! If the YUN "programmer is not responding" you may need to
+      reset the USB. Double-click the 32U4-RST button, then re-run
+      the avrdude command within the 10 sec. upload timeout. There
+      is a 'throbbing' LED to indicate waiting for upload.
+       $ avrdude -p atmega32u4 -c avr109 -P /dev/ttyACM0 -b 57600 -D -U flash:w:yun_isp.hex:i
 
 
 

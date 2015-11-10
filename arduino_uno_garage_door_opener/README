@@ -1,8 +1,8 @@
 This folder contains instructions developed from notes taken during
-the repair of my garage door opener. I have a Geni 1/2HP screw drive
+the repair of my garage door opener. I have a Genie 1/2HP screw drive
 garage door opener that failed several years ago. It was time over
-due to repare or replace it and save my back of strain from opening
-the door manually. As most engineers; I first belived I can repair
+due to repair or replace it and save my back of strain from opening
+the door manually. As most engineers; I first believed I can repair
 the opener. This README is a summery of how I repaired the door
 opener using an Arduino UNO. The "opener.ins" in this folder will
 detail the software procedures I used.
@@ -11,19 +11,19 @@ ________________________________________
 What's Wrong with My Garage Door Opener ?
 
    I had a good idea of the faults from testing it years ago, when
-   it first failed. The safty control circuit was failing even
-   though the IR beam emitter and sensor were functioning, varified
+   it first failed. The safety control circuit was failing even
+   though the IR beam emitter and sensor were functioning, verified
    by testing with a know good sensor. The door opener contained a
    controller circuit board that processes input signals from the
    wall switch and remote. This controller board also switched the
    110vac through relays to run the opener motor up and down and
-   turn on it's light. Geni no longer manufacturs this controller
+   turn on it's light. Genie no longer manufactures this controller
    board and I would need to replace faulty components on this one.
    At this point a sensible engineer would simply replace the entire
    opener as it's cost of approx. $180/US is much less then my labor
-   would be to repair the controller board. But I like the challange
+   would be to repair the controller board. But I like the challenge
    and promised not to charge myself for the entertainment. The
-   following images depict the opener and controler board
+   following images depict the opener and controller board
    location.
 
    https://github.com/glscantlen/instructions/blob/master/arduino_uno_garage_door_opener/opener.jpg
@@ -32,16 +32,16 @@ What's Wrong with My Garage Door Opener ?
 _____________________________________
 Reverse Engineer the Controller Board.
 
-   After testing several board componentents involved in the safty
-   signal I realized the problem was most likely an intigrated
+   After testing several board components involved in the safety
+   signal I realized the problem was most likely an integrated
    circuit manufactured by Micrel ( http://www.micrel.com/ ). This
    component, like the controller board, is no longer available. In
    testing the board components I discovered most of it's internal
    design and realized the Micrel controller IC could be replaced
-   with a microcontroller, like used in the Arduino kits. Further
+   with a micro controller, like used in the Arduino kits. Further
    detail of the controller board would be required the correctly
    interface to an ATmega328P, used in the Arduino UNO. These micro-
-   controllers can also be purchased sepeatly at approx. $3/US and
+   controllers can also be purchased separately at approx. $3/US and
    the UNO could be used to develop the code for a stand-alone
    ATmega328P. I then created a schematic of the controller board.
 
@@ -55,13 +55,13 @@ Build a S/W development test-bed.
    for the Micrel controller IC. I used the faulty controller board,
    removing the Micrel IC, to build a hardware test bed for the
    Arduino UNO. One at a time, starting with ground, I connected
-   I/O signals from the missing Micrel IC to the UNO, writting C
+   I/O signals from the missing Micrel IC to the UNO, writing C
    code functions to support the Micrel I/O function. To avoid some
    confusion I selected I/O ports on the UNO that match the Micrel
    IC pin numbers. The only additional component required for the
    UNO was a grounding resistor on the radio remote signal. This
-   resistor was needed to disipate voltage from the open collector
-   at Micrel IC pin 3. Initially I used LEDs to disply the state
+   resistor was needed to dissipate voltage from the open collector
+   at Micrel IC pin 3. Initially I used LEDs to display the state
    of the motor & light relays. Note the #defined I/O ports in
    opener.cpp
 
@@ -91,6 +91,10 @@ Install the stand-alone ATmega328P
    with the required 5V for ATmega328P. The finished controller
    board can now be used with the break-out cable to re-program
    the ATmega328P.
+
+ ! CAUTION: when ordering an ATmega328P from somewhere like Digi-
+   key, make sure to order ATmega328P-PU. There is a 'P' before
+   AND after the hyphen '-'.
 
    https://github.com/glscantlen/instructions/blob/master/arduino_uno_garage_door_opener/breakout_cable.jpg
    https://github.com/glscantlen/instructions/blob/master/arduino_uno_garage_door_opener/yun2uno.JPG
