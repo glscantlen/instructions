@@ -1,0 +1,1152 @@
+_______________________________________
+Pico Mini B development on Ubuntu 24.04
+
+ # Pico Mini B is not available as USB device after Ubuntu boot-up
+   Pico Mini B will need to be (re)inserted/booted _after_ Ubuntu boot-up
+   Note: The white button on the PicoMiniB circuit board will reboot.
+
+ $ lsusb
+   ...
+   Bus 001 Device 007: ID 2207:0019 Fuzhou Rockchip Electronics Company rk3xxx
+   ...
+
+
+
+   ____________________________________________________________________________
+ - Update image using command-line tool provided by Rockchip
+   ( https://wiki.luckfox.com/Luckfox-Pico/Luckfox-Pico-RV1103/Linux-MacOS-Burn-Image )
+   Unpacked the RK upgrade tool into PICO_DEV
+    $ PICO_DEV="${HOME}/Desktop/Luckfox-Pico"
+    $ cd ${PICO_DEV}
+    $ wget https://files.luckfox.com/wiki/Core3566/upgrade_tool_v2.17.zip
+    $ unzip upgrade_tool_v2.17.zip
+    $ chmod +x upgrade_tool_v2.17_for_linux/upgrade_tool
+    $ sudo upgrade_tool_v2.17_for_linux/upgrade_tool -v
+      Using /home/gscantlen/Desktop/Luckfox-Pico/upgrade_tool_v2.17_for_linux/config.ini
+      Upgrade Tool v2.17
+    # Use web browser to get these files and folders b/c google drive sucks with wget
+    - Goto following web page and click "Download all" to your ${PICO_DEV}
+      https://drive.google.com/drive/folders/1XR0gWIFFc8unwId-ZrccjrEX4KYces69
+    $ unzip Luckfox_Pico_Mini_Flash-*.zip
+    - hold down the white button on the PicoMini while (re)inserting the USB cable
+    $ sudo upgrade_tool_v2.17_for_linux/upgrade_tool uf Luckfox_Pico_Mini_Flash/update.img
+      Loading firmware...
+      Support Type:1106  FW Ver:0.0.00  FW Time:2024-07-10 15:44:59
+      Loader ver:1.01    Loader Time:2024-07-10 15:43:28
+      Start to upgrade firmware...
+      .........
+      Download Image... (100%)
+      Download Firmware Success
+      Upgrade firmware ok.
+
+
+
+   ____________________________________________________________________________
+ - Using RS232 USB dongle for Pico Mini B debug console
+   You'll need to convert RS232 signals back to TTL using following instructions:
+   
+      PC 9D-sub RS232 connector:
+      ( https://www.google.com/search?q=rs232+pin )
+         1 not used
+         2 RXD
+         3 TXD
+         4 DTR (6-12v use for pullup)
+         5 GND (connected via USB cables)
+         6-9 not used
+
+      Pico Mini B module:
+      ( https://wiki.luckfox.com/Luckfox-Pico/Luckfox-Pico-RV1103/Luckfox-Pico-Login-UART/ )
+         4 TXD
+         5 RXD (pullup is located on Pico module)
+
+      PC to Pico wiring uses 3 resisters and 2 transisters 2N3904 (or eq.)
+         PC-GND      connect to emitter of both NPN transistors
+         PC-RXD      connect to collector of NPN#1
+         Pico-RXD    connect to collector of NPN#2
+         PC-TXD      connect thru 10 K ohm resister to base of NPN#2
+         Pico-TXD    connect thru 4.7K ohm resister to base of NPN#1
+         PC-DTR      connect thru 10 K ohm resister to collector of NPN#1
+
+ - With this host serial port connection to the Pico module,
+   open a new terminal window for the debug console:
+    $ lsusb
+      Bus 001 Device 003: ID 05ad:0fba Y.C. Cable U.S.A., Inc. USB-Serial Controller
+      Bus 001 Device 007: ID 2207:0019 Fuzhou Rockchip Electronics Company rk3xxx
+    $ sudo dmesg | grep -E "tty|serial"
+      usb 1-4: pl2303 converter now attached to ttyUSB0
+    # Select the tty serial port for the Pico module debug console.
+      Note 'ttyUSB0' is an example for the USB-RS232 cable.
+    $ sudo apt-get install minicom
+    $ sudo minicom -D /dev/ttyUSB0 # Note: Device is locked, probably minicom already running
+       - login: root
+         password: luckfox
+       > ifconfig -a
+         Note usb0: inet addr:172.32.0.93 Mask:255.255.0.0
+
+    - You can also use standard I/O thru serial port (!BROKEN drops characters)
+       $ sudo stty -F /dev/ttyUSB0 115200 -parenb cs8 -cstopb -cooked
+       $ sudo stty -F /dev/ttyUSB0 -a
+         speed 115200 baud; rows 0; columns 0; line = 0;
+         intr = ^C; quit = ^\; erase = ^?; kill = ^U; eof = ^D; eol = <undef>; eol2 = <undef>; swtch = <undef>; start = ^Q; stop = ^S; susp = ^Z; rprnt = ^R; werase = ^W; lnext = ^V;
+         discard = ^O; min = 1; time = 5;
+         -parenb -parodd -cmspar cs8 hupcl -cstopb cread clocal -crtscts
+         ignbrk -brkint -ignpar -parmrk -inpck -istrip -inlcr -igncr -icrnl -ixon -ixoff -iuclc -ixany -imaxbel -iutf8
+         -opost -olcuc -ocrnl -onlcr -onocr -onlret -ofill -ofdel nl0 cr0 tab0 bs0 vt0 ff0
+         -isig -icanon -iexten -echo -echoe -echok -echonl -noflsh -xcase -tostop -echoprt -echoctl -echoke -flusho -extproc
+       $ sudo cat /dev/ttyUSB0 & BKGND_PS=$!
+       $ sudo sh -c 'while read cmd; do echo "$cmd"; done > /dev/ttyUSB0'
+       $ sudo kill -9 ${BKGND_PS}
+
+
+
+   ____________________________________________________________________________
+ - SSH into the Pico Module via USB for debug console (Ethernet over USB tethering)
+    $ sudo apt install net-tools
+    $ sudo apt-get install openssh-server openssh-client
+    $ sudo nano /etc/systemd/network/10-usb0.link
+      [Match]
+      Driver=rndis_host
+
+      [Link]
+      Name=usb0
+    $ sudo udevadm control -R
+    $ sudo ifconfig -a
+      usb0: ether 76:0e:30:3e:70:bd  txqueuelen 1000  (Ethernet)
+    - set static IP for usb0 ethernet device
+    $ sudo nano /etc/netplan/50-cloud-init.yaml
+      network:
+          ethernets:
+              enp109s0f1:
+                  dhcp4: true
+              usb0:
+                  addresses:
+                  - 172.32.0.1/16
+      .....
+    $ sudo netplan try
+      To save netplan setting, press return before timeout
+    $ sudo ifconfig -a
+    $ ping 172.32.0.93
+    $ ssh root@172.32.0.93
+      Are you sure you want to continue connecting (yes/no/[fingerprint])? yes
+      Warning: Permanently added '172.32.0.93' (ED25519) to the list of known hosts.
+       - root@172.32.0.93's password: luckfox
+       > ssh gscantlen@172.32.0.1
+       > exit
+       > exit
+   
+    - Also, you can now use telnet
+       $ telnet 172.32.0.93
+         Trying 172.32.0.93...
+         Connected to 172.32.0.93.
+         Escape character is '^]'.
+         luckfox login: root
+         Password: luckfox
+          > ls /
+          > exit 
+
+    $ scp Desktop/Luckfox-Pico/PicoMiniB_DebugConsole.txt root@172.32.0.93:/userdata/
+
+
+
+   ____________________________________________________________________________
+ - ADB Fastboot
+    $ sudo apt install adb
+    $ sudo adb start-server
+    $ lsusb
+      Bus 003 Device 003: ID 2207:0019 Fuzhou Rockchip Electronics Company rk3xxx
+    $ lsusb -vs 003:003 | grep -i serial
+      iSerial                 3 77f1d26aa3b8bdbb
+    $ sudo adb devices -l
+      List of devices attached
+      77f1d26aa3b8bdbb       device usb:3-2 product:occam model:Nexus_4 device:mako transport_id:1
+    $ sudo adb shell
+       > exit
+
+    $ adb push Desktop/Luckfox-Pico/PicoMiniB_DebugConsole.txt /root/
+
+
+
+   ____________________________________________________________________________
+ - Build(root) full system and install
+   ( https://wiki.luckfox.com/Luckfox-Pico/Luckfox-Pico-RV1103/Luckfox-Pico-SDK/ )
+   ###PICO_DEV="${HOME}/Desktop/Luckfox-Pico"
+
+    $ sudo apt update
+    $ sudo apt upgrade
+    $ PKG_LIST="\
+      git\
+      ssh\
+      make\
+      gcc\
+      gcc-multilib\
+      g++-multilib\
+      module-assistant\
+      expect\
+      g++\
+      gawk\
+      texinfo\
+      libssl-dev\
+      bison\
+      flex\
+      fakeroot\
+      cmake\
+      unzip\
+      gperf\
+      autoconf\
+      device-tree-compiler\
+      libncurses5-dev\
+      pkg-config\
+      bc\
+      python-is-python3\
+      passwd\
+      openssl\
+      openssh-server\
+      openssh-client\
+      vim\
+      file\
+      cpio\
+      rsync"
+
+    $ sudo apt-get install -y $PKG_LIST
+    $ cd ${PICO_DEV}
+    $ git clone https://gitee.com/LuckfoxTECH/luckfox-pico.git
+      Cloning into 'luckfox-pico'...
+      remote: Enumerating objects: 112081, done.
+      remote: Counting objects: 100% (112081/112081), done.
+      remote: Compressing objects: 100% (93933/93933), done.
+      remote: Total 112081 (delta 16785), reused 111971 (delta 16675), pack-reused 0
+      Receiving objects: 100% (112081/112081), 687.65 MiB | 3.02 MiB/s, done.
+      Resolving deltas: 100% (16785/16785), done.
+      Updating files: 100% (107444/107444), done.
+
+    $ cd luckfox-pico
+    $ ./build.sh lunch
+      You're building on Linux
+        Lunch menu...pick the Luckfox Pico hardware version:
+      _选择 Luckfox Pico 硬件版本:
+                [0] RV1103_Luckfox_Pico
+                [1] RV1103_Luckfox_Pico_Mini_A
+                [2] RV1103_Luckfox_Pico_Mini_B
+                [3] RV1103_Luckfox_Pico_Plus
+                [4] RV1106_Luckfox_Pico_Pro_Max
+                [5] RV1106_Luckfox_Pico_Ultra
+                [6] RV1106_Luckfox_Pico_Ultra_W
+                [7] custom
+      Which would you like? [0~7][default:0]: 2
+        Lunch menu...pick the boot medium:
+      _选择启动媒介:
+                [0] SD_CARD
+                [1] SPI_NAND
+      Which would you like? [0~1][default:0]: 1
+        Lunch menu...pick the system version:
+      _选择系统版本:
+                [0] Buildroot(Support Rockchip official features) 
+      Which would you like? [0~1][default:0]: 
+      [build.sh:info] Lunching for Default BoardConfig_IPC/BoardConfig-SPI_NAND-Buildroot-RV1103_Luckfox_Pico_Mini_B-IPC.mk boards...
+      [build.sh:info] Running build_select_board succeeded.
+
+    $ ./build.sh
+      ........
+      Generating MD5 data...
+      MD5 data generated successfully!
+      New image generated successfully!
+      [mk-update_pack.sh:info] Making -RK1106 update.img OK.
+      [build.sh:info] Running build_updateimg succeeded.
+      [build.sh:info] MEDIUM SPI_NAND relink Image
+      [build.sh:info] Running build_firmware succeeded.
+      [build.sh:info] Running build_all succeeded.
+      save to /home/gscantlen/Desktop/Luckfox-Pico/luckfox-pico/IMAGE/SPI_NAND_RV1103G-LUCKFOX-PICO-MINI-B.DTS_20240713.1734_RELEASE_TEST
+      [build.sh:info] Running build_save succeeded.
+      [build.sh:info] Running build_allsave succeeded.
+
+    $ adb shell uname -a
+      Linux luckfox 5.10.110 #1 Wed Jul 10 13:57:24 CST 2024 armv7l GNU/Linux
+
+    # Flash full system
+    - hold down the white button on the PicoMini while (re)inserting the USB cable
+    $ sudo ../upgrade_tool_v2.17_for_linux/upgrade_tool uf output/image/update.img
+      ......
+      Download IDB Start
+      Download IDB Success
+      Download Firmware Start
+      Download Image... (100%)
+      Download Firmware Success
+      Upgrade firmware ok.
+
+    $ adb shell uname -a
+      Linux luckfox 5.10.110 #1 Sat Jul 13 16:44:27 MDT 2024 armv7l GNU/Linux
+
+
+
+
+
+
+UbuntuDev
+    1  lspci
+    2  mount
+    3  ls /media/gscantlen/Ubuntu/
+    4  exit
+    5  top
+    6  ps aux | grep  ssh
+    7  kill -9 14409
+    8  ps aux | grep  ssh
+    9  kill -9 14410
+   10  sudo kill -9 14410
+   11  ps aux | grep  ssh
+   12  exit
+   13  cd /media/gscantlen/Ubuntu/home/glscantlen/Desktop/BlueTooth-SBC-modules/upgrade_tool_v2.17_for_linux/
+   14  ls
+   15  sudo upgrade_tool -v
+   16  sudo ./upgrade_tool -v
+   17  sudo upgrade_tool uf update.img
+   18  sudo ./upgrade_tool uf update.img
+   19  sudo ./upgrade_tool uf /media/gscantlen/Ubuntu/home/glscantlen/Desktop/BlueTooth-SBC-modules/Luckfox_Pico_Mini_B_Flash-20240711T032511Z-001/Luckfox_Pico_Mini_B_Flash//update.img
+   20  ping 172.32.0.70
+   21  ssh pico@172.32.0.70
+   22  sudo ufw status
+   23  ping 172.32.0.70
+   24  ssh pico@172.32.0.70
+   25  ip add
+   26  ping 192.168.0.18
+   27  ssh gscantlen192.168.0.18 
+   28  ssh gscantlen@192.168.0.18 
+   29  ssh gscantlen@192.168.0.18 -vv
+   30  ssh pico@172.32.0.70 -vv
+   31  minicom
+   32  ping 172.32.0.93
+   33  lsusb
+   34  lsusb -v
+   35  ls /dev
+   36  ls /dev/usb
+   37  ifconfig usb0 172.32.0.101 netmask 255.255.255.0
+   38  ip
+   39  ip usb0 172.32.0.101 netmask 255.255.255.0
+   40  sudo apt install net-tools
+   41  ifconfig usb0 172.32.0.101 netmask 255.255.255.0
+   42  sudo ifconfig usb0 172.32.0.101 netmask 255.255.255.0
+   43  lsusb -v | grep ': ID' 
+   44  lsmod
+   45  lsmod g_ether
+   46  lsmod | ether
+   47  lsmod | grep ether
+   48  lsmod | grep eth
+   49  lshw
+   50  lshw | grep -i usb
+   51  lspci | grep -i usb
+   52  ip | grep -i usb
+   53  ifconfig -a
+   54  lsmod | grep -i ether
+   55  ip -a
+   56  ip -h
+   57  sudo ip route add default via 192.168.0.123 dev usb0
+   58  ifconfig usb0 192.168.0.110
+   59  dmesg | grep ether
+   60  sudo dmesg | grep ether
+   61  sudo dmesg | grep -i usb0
+   62  ifconfig enxc63d81036508 192.168.0.110
+   63  sudo ifconfig enxc63d81036508 192.168.0.110
+   64  ping 192.168.0.110
+   65  ssh root@192.168.0.110
+   66  ssh gscantlen@192.168.0.110
+   67  ssh gscantlen@192.168.0.110 -vv
+   68  ssh 192.168.0.110 -vv
+   69  sudo apt-get install openssh-server openssh-client
+   70  ssh 192.168.0.110 -vv
+   71  sudo ifconfig usb0 192.168.0.110
+   72  sudo ifconfig enxc63d81036508 stop
+   73  sudo ifconfig -h
+   74  sudo ifconfig enxc63d81036508 del 192.168.0.110
+   75  sudo ifconfig -a
+   76  sudo dmesg | grep -i usb0
+   77  sudo ifconfig -a
+   78  sudo dmesg | grep -i usb0
+   79  sudo ifconfig -a
+   80  sudo ifconfig enxbe2baa1eb815 192.168.0.110
+   81  ping 192.168.0.110
+   82  ssh 192.168.0.110
+   83  exit
+   84  lsusb
+   85  minicom
+   86  sudo apt install minicom
+   87  minicom
+   88  sudo minicom
+   89  minicom -h
+   90  minicom /dev/ttyusb0
+   91  minicom -D /dev/ttyusb0
+   92  ls /dev/tty*
+   93  sudo minicom -D /dev/ttyusb0
+   94  minicom /dev/ttyUSB0
+   95  minicom -d /dev/ttyUSB0
+   96  minicom -D /dev/ttyUSB0
+   97  sudo minicom -D /dev/ttyUSB0
+   98  exit
+   99  sudo dmesg | grep -i usb0
+  100  sudo ifconfig -a
+  101  ping 172.32.0.93
+  102  sudo dmesg | grep -i usb0
+  103  ping 172.32.0.93
+  104  sudo ifconfig -a
+  105  exit
+  106  sudo minicom -D /dev/ttyUSB0
+  107  exit
+  108  ls /proc/config.gz
+  109  ls /lib/modules/$(uname -r)/modules.builtin
+  110  sudo find / -name config.gz
+  111  cat /boot/config-$(uname -r)
+  112  grep -i ether /boot/config-$(uname -r)
+  113  lsmod | grep ether
+  114  lsmod | grep -i usb
+  115  lsmod | grep -i rndis_host
+  116  grep -i rndis /boot/config-$(uname -r)
+  117  lsmod | grep -i rndis
+  118  exit
+  119  cat /etc/network/interfaces
+  120  ping 172.32.0.93
+  121  sudo dmesg | grep -i usb0
+  122  sudo ifconfig -a
+  123  ls /etc/udev/rules.d/
+  124  ln -s /dev/null /etc/udev/rules.d/80-net-setup-link.rules
+  125  sudo ln -s /dev/null /etc/udev/rules.d/80-net-setup-link.rules
+  126  sudo ifconfig -a
+  127  history | grep ifconfig
+  128  ifconfig usb0 172.32.0.101 netmask 255.255.0.0
+  129  sudo ifconfig usb0 172.32.0.101 netmask 255.255.0.0
+  130  ping 172.32.0.101
+  131  ping 172.32.0.93
+  132  ssh root@172.32.0.93
+  133  exit
+  134  sudo minicom -D /dev/ttyUSB0
+  135  exit
+  136  sudo ifconfig -a
+  137  sudo ifconfig usb0 172.32.0.101 netmask 255.255.0.0
+  138  sudo ifup
+  139  sudo ifconfig -a
+  140  cat /etc/udev/rules.d/80-net-setup-link.rules
+  141  sudo rm /etc/udev/rules.d/80-net-setup-link.rules
+  142  sudo ifconfig -a
+  143  sudo nano /etc/systemd/network/10-usb0.link
+  144  sudo udevadm control -R
+  145  sudo ifconfig -a
+  146  exit
+  147  sudo minicom -D /dev/ttyUSB0
+  148  exit
+  149  sudo ifconfig -a
+  150  sudo ifconfig enx86762c08c448 172.32.0.101 netmask 255.255.0.0
+  151  ping 172.32.0.93
+  152  ssh root@172.32.0.93
+  153  sudo ifconfig -a
+  154  sudo ifconfig enx86762c08c448 172.32.0.101 netmask 255.255.0.0
+  155  ssh root@172.32.0.93
+  156  sudo ifconfig -a
+  157  ssh root@172.32.0.93
+  158  history | grep udev
+  159  history | grep nano
+  160  cat /etc/systemd/network/10-usb0.link
+  161  history | grep dev
+  162  history
+  163  history | less
+  164  sudo ifconfig -a
+  165  ssh root@172.32.0.93
+  166  exit
+  167  sudo minicom -D /dev/ttyUSB0
+  168  exit
+  169  history | grep udev
+  170  sudo dmesg | grep ether
+  171  sudo dmesg | grep rndis
+  172  sudo nano /etc/systemd/network/10-usb0.link
+  173  sudo udevadm control -R
+  174  sudo ifconfig -a
+  175  sudo nano 50-cloud-init.yaml
+  176  ls 50-cloud-init.yaml
+  177  ls /etc/netplan
+  178  sudo nano /etc/netplan/50-cloud-init.yaml
+  179  sudo ifconfig -a
+  180  sudo netplan try
+  181  sudo ifconfig -a
+  182  sudo nano /etc/netplan/50-cloud-init.yaml
+  183  sudo netplan try
+  184  exit
+  185  lsusb
+  186  dmesg | grep -E "tty|serial"
+  187  sudo dmesg | grep -E "tty|serial"
+  188  cat /etc/minicom/minirc.dfl
+  189  cat /etc/minicom
+  190  cd /media/gscantlen/Ubuntu/home/glscantlen/Desktop/BlueTooth-SBC-modules/upgrade_tool_v2.17_for_linux/
+  191  ls
+  192  ./upgrade_tool -v
+  193  ./upgrade_tool -vv
+  194  cd ~
+  195  ls /media/gscantlen/Ubuntu/home/glscantlen/Desktop/BlueTooth-SBC-modules/Luckfox_Pico_Mini_B_Flash-20240711T032511Z-001/Luckfox_Pico_Mini_B_Flash//update.img
+  196  ls /media/gscantlen/Ubuntu/home/glscantlen/Desktop/BlueTooth-SBC-modules/Luckfox_Pico_Mini_B_Flash-20240711T032511Z-001/Luckfox_Pico_Mini_B_Flash/update.img
+  197  diff Downloads/update.img /media/gscantlen/Ubuntu/home/glscantlen/Desktop/BlueTooth-SBC-modules/Luckfox_Pico_Mini_B_Flash-20240711T032511Z-001/Luckfox_Pico_Mini_B_Flash/update.img
+  198  ls -alst Downloads/update.img /media/gscantlen/Ubuntu/home/glscantlen/Desktop/BlueTooth-SBC-modules/Luckfox_Pico_Mini_B_Flash-20240711T032511Z-001/Luckfox_Pico_Mini_B_Flash/update.img
+  199  exit
+  200  sudo minicom -D /dev/ttyUSB0
+  201  exit
+  202  sudo ifconfig -a
+  203  lsusb
+  204  ssh root@172.32.0.93
+  205  lsusb
+  206  history | less
+  207  PICO_DEV=/media/gscantlen/Ubuntu/home/glscantlen/Desktop/BlueTooth-SBC-modules
+  208  cd ${PICO_DEV}/upgrade_tool_v2.17/upgrade_tool_v2.17_for_linux
+  209  cd ${PICO_DEV}/upgrade_tool_v2.17
+  210  cd ${PICO_DEV}/upgrade_tool_v2.17_for_linux
+  211  ls
+  212  cd ${PICO_DEV}/upgrade_tool_v2.17_for_linux
+  213  cd ~
+  214  cd ${PICO_DEV}/upgrade_tool_v2.17_for_linux
+  215  cd ~
+  216  history 
+  217  exit
+  218  history 
+
+
+
+
+
+PicoDebugConsole
+   0 exit
+   1 cat /etc/passwd 
+   2 ip add
+   3 ping 172.32.0.93
+   4 lsmod
+   5 cat /etc/network/interfaces
+   6 ip add
+   7 cat /etc/network/interfaces
+   8 ifconfig -a
+   9 power
+  10 hault
+  11 ssh gscantlen@172.32.0.101
+  12 exit
+  13 halt
+  14 reboot
+  15 ssh gscantlen@172.32.0.101
+  16 exit
+  17 exit
+  18 reboot
+  19 exit
+  20 reboot
+  21 exit
+  22 ifconfig -a
+  23 history 
+
+
+
+
+Ubuntu 16.04 browse history
+
+https://drive.google.com/drive/folders/1ZcI3DgXTRsv0C-vdCnLNxSFXuJpgyoUV
+https://drive.google.com/drive/folders/1exPAibHtbOUb0j-Z2gJ4JUdh7Quw8Kq-
+https://drive.google.com/drive/folders/1sFUWjYpDDisf92q9EwP1Ia7lHgp9PaFS?usp=drive_link
+
+
+9:38 AM
+ubuntu 24.04 lts - Google Search
+www.google.com
+4:52 PM
+RKMPI Example Guide | LUCKFOX WIKI
+wiki.luckfox.com
+9:38 AM
+Ubuntu Desktop 24.04 LTS: Noble Numbat deep dive | Ubuntu
+ubuntu.com
+9:37 AM
+Ubuntu 24.04 LTS | Ubuntu
+ubuntu.com
+9:37 AM
+streamripper/streamripper
+github.com
+9:37 AM
+Buildroot_XU3_MPlayer_ins/build_xu3_mplayer.ins at master · glscantlen/Buildroot_XU3_MPlayer_ins · GitHub
+github.com
+9:37 AM
+GitHub - glscantlen/instructions: Instructions for the build / install of various Linux systems and functions
+github.com
+9:37 AM
+SSH/Telnet Login | LUCKFOX WIKI
+wiki.luckfox.com
+9:37 AM
+buildroot - Google Drive
+drive.google.com
+9:37 AM
+Gmail: Private and secure email at no cost | Google Workspace
+www.google.com
+9:37 AM
+Totem Movie Player chapter files - Google Search
+www.google.com
+9:37 AM
+Internet, TV, Phone, Smart Home and Security - Xfinity by Comcast
+www.xfinity.com
+Wednesday, July 10, 2024
+9:42 PM
+Internet, TV, Phone, Smart Home and Security - Xfinity by Comcast
+www.xfinity.com
+9:38 PM
+SSH/Telnet Login | LUCKFOX WIKI
+wiki.luckfox.com
+9:38 PM
+Image Burning for Linux/MacOS | LUCKFOX WIKI
+wiki.luckfox.com
+9:38 PM
+Burning SPI NAND Flash Images | LUCKFOX WIKI
+wiki.luckfox.com
+9:38 PM
+SD Card Image Burning | LUCKFOX WIKI
+wiki.luckfox.com
+9:38 PM
+Preparations | LUCKFOX WIKI
+wiki.luckfox.com
+9:28 PM
+Getting Started Tutorial | LUCKFOX WIKI
+wiki.luckfox.com
+9:27 PM
+buildroot - Google Drive
+drive.google.com
+9:27 PM
+Luckfox_Pico_SDcard - Google Drive
+drive.google.com
+9:22 PM
+Luckfox_Pico_Mini_B_Flash - Google Drive
+drive.google.com
+9:21 PM
+firmware - Google Drive
+drive.google.com
+9:20 PM
+Others - Google Drive
+drive.google.com
+9:20 PM
+firmware - Google Drive
+drive.google.com
+8:41 PM
+ubuntu - Google Drive
+drive.google.com
+8:39 PM
+backup - Google Drive
+drive.google.com
+8:33 PM
+ALL-IN-ONE PACKAGE TRACKING | 17TRACK
+t.17track.net
+
+
+
+
+
+APT INSTALL RESULTS see PKG_LIST
+
+Reading package lists... Done
+Building dependency tree... Done
+Reading state information... Done
+Note, selecting 'libncurses-dev' instead of 'libncurses5-dev'
+unzip is already the newest version (6.0-28ubuntu4).
+unzip set to manually installed.
+pkg-config is already the newest version (1.8.1-2build1).
+pkg-config set to manually installed.
+bc is already the newest version (1.07.1-3ubuntu4).
+bc set to manually installed.
+passwd is already the newest version (1:4.13+dfsg1-4ubuntu3).
+passwd set to manually installed.
+openssl is already the newest version (3.0.13-0ubuntu3.1).
+openssl set to manually installed.
+openssh-server is already the newest version (1:9.6p1-3ubuntu13.4).
+openssh-client is already the newest version (1:9.6p1-3ubuntu13.4).
+file is already the newest version (1:5.45-3build1).
+file set to manually installed.
+cpio is already the newest version (2.15+dfsg-1ubuntu2).
+cpio set to manually installed.
+rsync is already the newest version (3.2.7-1ubuntu1).
+rsync set to manually installed.
+The following additional packages will be installed:
+  automake autotools-dev bzip2 cmake-data g++-13 g++-13-multilib g++-13-x86-64-linux-gnu g++-x86-64-linux-gnu gcc-13 gcc-13-multilib gcc-13-x86-64-linux-gnu gcc-x86-64-linux-gnu
+  git-man lib32asan8 lib32atomic1 lib32gcc-13-dev lib32gcc-s1 lib32gomp1 lib32itm1 lib32quadmath0 lib32stdc++-13-dev lib32stdc++6 lib32ubsan1 libasan8 libc6-dev-i386 libc6-dev-x32
+  libc6-i386 libc6-x32 libcc1-0 liberror-perl libfakeroot libfdt1 libfl-dev libfl2 libgcc-13-dev libhwasan0 libitm1 libjsoncpp25 liblsan0 libquadmath0 librhash0 libsigsegv2
+  libstdc++-13-dev libtext-unidecode-perl libtsan2 libubsan1 libx32asan8 libx32atomic1 libx32gcc-13-dev libx32gcc-s1 libx32gomp1 libx32itm1 libx32quadmath0 libx32stdc++-13-dev
+  libx32stdc++6 libx32ubsan1 libxml-libxml-perl libxml-namespacesupport-perl libxml-sax-base-perl libxml-sax-expat-perl libxml-sax-perl m4 tcl-expect tex-common texinfo-lib
+  vim-runtime
+Suggested packages:
+  autoconf-archive gnu-standards autoconf-doc libtool gettext bison-doc bzip2-doc cmake-doc cmake-format elpa-cmake-mode ninja-build tk8.6 build-essential flex-doc gcc-13-doc
+  lib32stdc++6-13-dbg libx32stdc++6-13-dbg gawk-doc gcc-doc gcc-13-locales gdb-x86-64-linux-gnu git-daemon-run | git-daemon-sysvinit git-doc git-email git-gui gitk gitweb git-cvs
+  git-mediawiki git-svn ncurses-doc libssl-doc libstdc++-13-doc libxml-sax-expatxs-perl m4-doc make-doc debhelper texlive-base texlive-latex-base texlive-plain-generic
+  texlive-fonts-recommended ctags vim-doc vim-scripts
+The following NEW packages will be installed:
+  autoconf automake autotools-dev bison bzip2 cmake cmake-data device-tree-compiler expect fakeroot flex g++ g++-13 g++-13-multilib g++-13-x86-64-linux-gnu g++-multilib
+  g++-x86-64-linux-gnu gawk gcc gcc-13 gcc-13-multilib gcc-13-x86-64-linux-gnu gcc-multilib gcc-x86-64-linux-gnu git git-man gperf lib32asan8 lib32atomic1 lib32gcc-13-dev
+  lib32gcc-s1 lib32gomp1 lib32itm1 lib32quadmath0 lib32stdc++-13-dev lib32stdc++6 lib32ubsan1 libasan8 libc6-dev-i386 libc6-dev-x32 libc6-i386 libc6-x32 libcc1-0 liberror-perl
+  libfakeroot libfdt1 libfl-dev libfl2 libgcc-13-dev libhwasan0 libitm1 libjsoncpp25 liblsan0 libncurses-dev libquadmath0 librhash0 libsigsegv2 libssl-dev libstdc++-13-dev
+  libtext-unidecode-perl libtsan2 libubsan1 libx32asan8 libx32atomic1 libx32gcc-13-dev libx32gcc-s1 libx32gomp1 libx32itm1 libx32quadmath0 libx32stdc++-13-dev libx32stdc++6
+  libx32ubsan1 libxml-libxml-perl libxml-namespacesupport-perl libxml-sax-base-perl libxml-sax-expat-perl libxml-sax-perl m4 make module-assistant python-is-python3 ssh tcl-expect
+  tex-common texinfo texinfo-lib vim vim-runtime
+0 upgraded, 88 newly installed, 0 to remove and 0 not upgraded.
+Need to get 112 MB of archives.
+After this operation, 443 MB of additional disk space will be used.
+Get:1 http://us.archive.ubuntu.com/ubuntu noble/main amd64 m4 amd64 1.4.19-4build1 [244 kB]
+Get:2 http://us.archive.ubuntu.com/ubuntu noble/main amd64 flex amd64 2.6.4-8.2build1 [301 kB]
+Get:3 http://us.archive.ubuntu.com/ubuntu noble/main amd64 libsigsegv2 amd64 2.14-1ubuntu2 [15.0 kB]
+Get:4 http://us.archive.ubuntu.com/ubuntu noble/main amd64 gawk amd64 1:5.2.1-2build3 [463 kB]
+Get:5 http://us.archive.ubuntu.com/ubuntu noble/main amd64 autoconf all 2.71-3 [339 kB]
+Get:6 http://us.archive.ubuntu.com/ubuntu noble/main amd64 autotools-dev all 20220109.1 [44.9 kB]
+Get:7 http://us.archive.ubuntu.com/ubuntu noble/main amd64 automake all 1:1.16.5-1.3ubuntu1 [558 kB]
+Get:8 http://us.archive.ubuntu.com/ubuntu noble/main amd64 bison amd64 2:3.8.2+dfsg-1build2 [749 kB]
+Get:9 http://us.archive.ubuntu.com/ubuntu noble/main amd64 bzip2 amd64 1.0.8-5.1 [34.5 kB]
+Get:10 http://us.archive.ubuntu.com/ubuntu noble/main amd64 libjsoncpp25 amd64 1.9.5-6build1 [82.8 kB]
+Get:11 http://us.archive.ubuntu.com/ubuntu noble/main amd64 librhash0 amd64 1.4.3-3build1 [129 kB]
+Get:12 http://us.archive.ubuntu.com/ubuntu noble/main amd64 cmake-data all 3.28.3-1build7 [2,155 kB]
+Get:13 http://us.archive.ubuntu.com/ubuntu noble/main amd64 cmake amd64 3.28.3-1build7 [11.2 MB]
+Get:14 http://us.archive.ubuntu.com/ubuntu noble/universe amd64 tcl-expect amd64 5.45.4-3 [110 kB]
+Get:15 http://us.archive.ubuntu.com/ubuntu noble/universe amd64 expect amd64 5.45.4-3 [137 kB]
+Get:16 http://us.archive.ubuntu.com/ubuntu noble/main amd64 libfakeroot amd64 1.33-1 [32.4 kB]
+Get:17 http://us.archive.ubuntu.com/ubuntu noble/main amd64 fakeroot amd64 1.33-1 [67.2 kB]
+Get:18 http://us.archive.ubuntu.com/ubuntu noble/main amd64 libcc1-0 amd64 14-20240412-0ubuntu1 [47.7 kB]
+Get:19 http://us.archive.ubuntu.com/ubuntu noble/main amd64 libitm1 amd64 14-20240412-0ubuntu1 [28.9 kB]
+Get:20 http://us.archive.ubuntu.com/ubuntu noble/main amd64 libasan8 amd64 14-20240412-0ubuntu1 [3,024 kB]
+Get:21 http://us.archive.ubuntu.com/ubuntu noble/main amd64 liblsan0 amd64 14-20240412-0ubuntu1 [1,313 kB]
+Get:22 http://us.archive.ubuntu.com/ubuntu noble/main amd64 libtsan2 amd64 14-20240412-0ubuntu1 [2,736 kB]
+Get:23 http://us.archive.ubuntu.com/ubuntu noble/main amd64 libubsan1 amd64 14-20240412-0ubuntu1 [1,175 kB]
+Get:24 http://us.archive.ubuntu.com/ubuntu noble/main amd64 libhwasan0 amd64 14-20240412-0ubuntu1 [1,632 kB]
+Get:25 http://us.archive.ubuntu.com/ubuntu noble/main amd64 libquadmath0 amd64 14-20240412-0ubuntu1 [153 kB]
+Get:26 http://us.archive.ubuntu.com/ubuntu noble/main amd64 libgcc-13-dev amd64 13.2.0-23ubuntu4 [2,688 kB]
+Get:27 http://us.archive.ubuntu.com/ubuntu noble/main amd64 gcc-13-x86-64-linux-gnu amd64 13.2.0-23ubuntu4 [21.9 MB]
+Get:28 http://us.archive.ubuntu.com/ubuntu noble/main amd64 gcc-13 amd64 13.2.0-23ubuntu4 [482 kB]                                                                                  
+Get:29 http://us.archive.ubuntu.com/ubuntu noble/main amd64 gcc-x86-64-linux-gnu amd64 4:13.2.0-7ubuntu1 [1,212 B]                                                                  
+Get:30 http://us.archive.ubuntu.com/ubuntu noble/main amd64 gcc amd64 4:13.2.0-7ubuntu1 [5,018 B]                                                                                   
+Get:31 http://us.archive.ubuntu.com/ubuntu noble/main amd64 libstdc++-13-dev amd64 13.2.0-23ubuntu4 [2,399 kB]                                                                      
+Get:32 http://us.archive.ubuntu.com/ubuntu noble/main amd64 g++-13-x86-64-linux-gnu amd64 13.2.0-23ubuntu4 [12.5 MB]                                                                
+Get:33 http://us.archive.ubuntu.com/ubuntu noble/main amd64 g++-13 amd64 13.2.0-23ubuntu4 [14.5 kB]                                                                                 
+Get:34 http://us.archive.ubuntu.com/ubuntu noble/main amd64 g++-x86-64-linux-gnu amd64 4:13.2.0-7ubuntu1 [964 B]                                                                    
+Get:35 http://us.archive.ubuntu.com/ubuntu noble/main amd64 g++ amd64 4:13.2.0-7ubuntu1 [1,100 B]                                                                                   
+Get:36 http://us.archive.ubuntu.com/ubuntu noble-updates/main amd64 libc6-i386 amd64 2.39-0ubuntu8.2 [2,788 kB]                                                                     
+Get:37 http://us.archive.ubuntu.com/ubuntu noble-updates/main amd64 libc6-dev-i386 amd64 2.39-0ubuntu8.2 [1,448 kB]                                                                 
+Get:38 http://us.archive.ubuntu.com/ubuntu noble-updates/main amd64 libc6-x32 amd64 2.39-0ubuntu8.2 [2,917 kB]                                                                      
+Get:39 http://us.archive.ubuntu.com/ubuntu noble-updates/main amd64 libc6-dev-x32 amd64 2.39-0ubuntu8.2 [1,636 kB]                                                                  
+Get:40 http://us.archive.ubuntu.com/ubuntu noble/main amd64 lib32gcc-s1 amd64 14-20240412-0ubuntu1 [95.2 kB]                                                                        
+Get:41 http://us.archive.ubuntu.com/ubuntu noble/main amd64 libx32gcc-s1 amd64 14-20240412-0ubuntu1 [78.2 kB]                                                                       
+Get:42 http://us.archive.ubuntu.com/ubuntu noble/main amd64 lib32gomp1 amd64 14-20240412-0ubuntu1 [151 kB]                                                                          
+Get:43 http://us.archive.ubuntu.com/ubuntu noble/main amd64 libx32gomp1 amd64 14-20240412-0ubuntu1 [145 kB]                                                                         
+Get:44 http://us.archive.ubuntu.com/ubuntu noble/main amd64 lib32itm1 amd64 14-20240412-0ubuntu1 [31.0 kB]                                                                          
+Get:45 http://us.archive.ubuntu.com/ubuntu noble/main amd64 libx32itm1 amd64 14-20240412-0ubuntu1 [29.3 kB]                                                                         
+Get:46 http://us.archive.ubuntu.com/ubuntu noble/main amd64 lib32atomic1 amd64 14-20240412-0ubuntu1 [8,388 B]                                                                       
+Get:47 http://us.archive.ubuntu.com/ubuntu noble/main amd64 libx32atomic1 amd64 14-20240412-0ubuntu1 [10.1 kB]                                                                      
+Get:48 http://us.archive.ubuntu.com/ubuntu noble/main amd64 lib32asan8 amd64 14-20240412-0ubuntu1 [2,878 kB]                                                                        
+Get:49 http://us.archive.ubuntu.com/ubuntu noble/main amd64 libx32asan8 amd64 14-20240412-0ubuntu1 [2,861 kB]                                                                       
+Get:50 http://us.archive.ubuntu.com/ubuntu noble/main amd64 lib32stdc++6 amd64 14-20240412-0ubuntu1 [838 kB]                                                                        
+Get:51 http://us.archive.ubuntu.com/ubuntu noble/main amd64 lib32ubsan1 amd64 14-20240412-0ubuntu1 [1,146 kB]                                                                       
+Get:52 http://us.archive.ubuntu.com/ubuntu noble/main amd64 libx32stdc++6 amd64 14-20240412-0ubuntu1 [779 kB]                                                                       
+Get:53 http://us.archive.ubuntu.com/ubuntu noble/main amd64 libx32ubsan1 amd64 14-20240412-0ubuntu1 [1,162 kB]                                                                      
+Get:54 http://us.archive.ubuntu.com/ubuntu noble/main amd64 lib32quadmath0 amd64 14-20240412-0ubuntu1 [247 kB]                                                                      
+Get:55 http://us.archive.ubuntu.com/ubuntu noble/main amd64 libx32quadmath0 amd64 14-20240412-0ubuntu1 [156 kB]                                                                     
+Get:56 http://us.archive.ubuntu.com/ubuntu noble/main amd64 lib32gcc-13-dev amd64 13.2.0-23ubuntu4 [2,466 kB]                                                                       
+Get:57 http://us.archive.ubuntu.com/ubuntu noble/main amd64 libx32gcc-13-dev amd64 13.2.0-23ubuntu4 [2,197 kB]                                                                      
+Get:58 http://us.archive.ubuntu.com/ubuntu noble/main amd64 gcc-13-multilib amd64 13.2.0-23ubuntu4 [870 B]                                                                          
+Get:59 http://us.archive.ubuntu.com/ubuntu noble/main amd64 lib32stdc++-13-dev amd64 13.2.0-23ubuntu4 [1,182 kB]                                                                    
+Get:60 http://us.archive.ubuntu.com/ubuntu noble/main amd64 libx32stdc++-13-dev amd64 13.2.0-23ubuntu4 [1,086 kB]                                                                   
+Get:61 http://us.archive.ubuntu.com/ubuntu noble/main amd64 g++-13-multilib amd64 13.2.0-23ubuntu4 [886 B]                                                                          
+Get:62 http://us.archive.ubuntu.com/ubuntu noble/main amd64 gcc-multilib amd64 4:13.2.0-7ubuntu1 [1,474 B]                                                                          
+Get:63 http://us.archive.ubuntu.com/ubuntu noble/main amd64 g++-multilib amd64 4:13.2.0-7ubuntu1 [884 B]                                                                            
+Get:64 http://us.archive.ubuntu.com/ubuntu noble/main amd64 liberror-perl all 0.17029-2 [25.6 kB]                                                                                   
+Get:65 http://us.archive.ubuntu.com/ubuntu noble-updates/main amd64 git-man all 1:2.43.0-1ubuntu7.1 [1,100 kB]                                                                      
+Get:66 http://us.archive.ubuntu.com/ubuntu noble-updates/main amd64 git amd64 1:2.43.0-1ubuntu7.1 [3,679 kB]                                                                        
+Get:67 http://us.archive.ubuntu.com/ubuntu noble/universe amd64 gperf amd64 3.1-1build1 [103 kB]                                                                                    
+Get:68 http://us.archive.ubuntu.com/ubuntu noble/main amd64 libfl2 amd64 2.6.4-8.2build1 [9,768 B]                                                                                  
+Get:69 http://us.archive.ubuntu.com/ubuntu noble/main amd64 libfl-dev amd64 2.6.4-8.2build1 [6,250 B]                                                                               
+Get:70 http://us.archive.ubuntu.com/ubuntu noble/main amd64 libncurses-dev amd64 6.4+20240113-1ubuntu2 [384 kB]                                                                     
+Get:71 http://us.archive.ubuntu.com/ubuntu noble-updates/main amd64 libssl-dev amd64 3.0.13-0ubuntu3.1 [2,408 kB]                                                                   
+Get:72 http://us.archive.ubuntu.com/ubuntu noble/universe amd64 libtext-unidecode-perl all 1.30-3 [105 kB]                                                                          
+Get:73 http://us.archive.ubuntu.com/ubuntu noble/main amd64 libxml-namespacesupport-perl all 1.12-2 [13.5 kB]                                                                       
+Get:74 http://us.archive.ubuntu.com/ubuntu noble/main amd64 libxml-sax-base-perl all 1.09-3 [18.9 kB]                                                                               
+Get:75 http://us.archive.ubuntu.com/ubuntu noble/main amd64 libxml-sax-perl all 1.02+dfsg-3 [57.0 kB]                                                                               
+Get:76 http://us.archive.ubuntu.com/ubuntu noble/main amd64 libxml-libxml-perl amd64 2.0207+dfsg+really+2.0134-1build4 [304 kB]                                                     
+Get:77 http://us.archive.ubuntu.com/ubuntu noble/main amd64 libxml-sax-expat-perl all 0.51-2 [8,644 B]                                                                              
+Get:78 http://us.archive.ubuntu.com/ubuntu noble/main amd64 make amd64 4.3-4.1build2 [180 kB]                                                                                       
+Get:79 http://us.archive.ubuntu.com/ubuntu noble/universe amd64 module-assistant all 0.11.11ubuntu1 [92.1 kB]                                                                       
+Get:80 http://us.archive.ubuntu.com/ubuntu noble/main amd64 python-is-python3 all 3.11.4-1 [2,684 B]                                                                                
+Get:81 http://us.archive.ubuntu.com/ubuntu noble-updates/main amd64 ssh all 1:9.6p1-3ubuntu13.4 [4,660 B]                                                                           
+Get:82 http://us.archive.ubuntu.com/ubuntu noble/universe amd64 tex-common all 6.18 [32.8 kB]                                                                                       
+Get:83 http://us.archive.ubuntu.com/ubuntu noble/universe amd64 texinfo-lib amd64 7.1-3build2 [133 kB]                                                                              
+Get:84 http://us.archive.ubuntu.com/ubuntu noble/universe amd64 texinfo all 7.1-3build2 [1,273 kB]                                                                                  
+Get:85 http://us.archive.ubuntu.com/ubuntu noble-updates/main amd64 vim-runtime all 2:9.1.0016-1ubuntu7.1 [7,279 kB]                                                                
+Get:86 http://us.archive.ubuntu.com/ubuntu noble-updates/main amd64 vim amd64 2:9.1.0016-1ubuntu7.1 [1,881 kB]                                                                      
+Get:87 http://us.archive.ubuntu.com/ubuntu noble/main amd64 libfdt1 amd64 1.7.0-2build1 [20.1 kB]                                                                                   
+Get:88 http://us.archive.ubuntu.com/ubuntu noble/main amd64 device-tree-compiler amd64 1.7.0-2build1 [228 kB]                                                                       
+Fetched 112 MB in 15s (7,295 kB/s)                                                                                                                                                  
+Extracting templates from packages: 100%
+Selecting previously unselected package m4.
+(Reading database ... 152931 files and directories currently installed.)
+Preparing to unpack .../m4_1.4.19-4build1_amd64.deb ...
+Unpacking m4 (1.4.19-4build1) ...
+Selecting previously unselected package flex.
+Preparing to unpack .../flex_2.6.4-8.2build1_amd64.deb ...
+Unpacking flex (2.6.4-8.2build1) ...
+Selecting previously unselected package libsigsegv2:amd64.
+Preparing to unpack .../libsigsegv2_2.14-1ubuntu2_amd64.deb ...
+Unpacking libsigsegv2:amd64 (2.14-1ubuntu2) ...
+Setting up libsigsegv2:amd64 (2.14-1ubuntu2) ...
+Selecting previously unselected package gawk.
+(Reading database ... 153069 files and directories currently installed.)
+Preparing to unpack .../00-gawk_1%3a5.2.1-2build3_amd64.deb ...
+Unpacking gawk (1:5.2.1-2build3) ...
+Selecting previously unselected package autoconf.
+Preparing to unpack .../01-autoconf_2.71-3_all.deb ...
+Unpacking autoconf (2.71-3) ...
+Selecting previously unselected package autotools-dev.
+Preparing to unpack .../02-autotools-dev_20220109.1_all.deb ...
+Unpacking autotools-dev (20220109.1) ...
+Selecting previously unselected package automake.
+Preparing to unpack .../03-automake_1%3a1.16.5-1.3ubuntu1_all.deb ...
+Unpacking automake (1:1.16.5-1.3ubuntu1) ...
+Selecting previously unselected package bison.
+Preparing to unpack .../04-bison_2%3a3.8.2+dfsg-1build2_amd64.deb ...
+Unpacking bison (2:3.8.2+dfsg-1build2) ...
+Selecting previously unselected package bzip2.
+Preparing to unpack .../05-bzip2_1.0.8-5.1_amd64.deb ...
+Unpacking bzip2 (1.0.8-5.1) ...
+Selecting previously unselected package libjsoncpp25:amd64.
+Preparing to unpack .../06-libjsoncpp25_1.9.5-6build1_amd64.deb ...
+Unpacking libjsoncpp25:amd64 (1.9.5-6build1) ...
+Selecting previously unselected package librhash0:amd64.
+Preparing to unpack .../07-librhash0_1.4.3-3build1_amd64.deb ...
+Unpacking librhash0:amd64 (1.4.3-3build1) ...
+Selecting previously unselected package cmake-data.
+Preparing to unpack .../08-cmake-data_3.28.3-1build7_all.deb ...
+Unpacking cmake-data (3.28.3-1build7) ...
+Selecting previously unselected package cmake.
+Preparing to unpack .../09-cmake_3.28.3-1build7_amd64.deb ...
+Unpacking cmake (3.28.3-1build7) ...
+Selecting previously unselected package tcl-expect:amd64.
+Preparing to unpack .../10-tcl-expect_5.45.4-3_amd64.deb ...
+Unpacking tcl-expect:amd64 (5.45.4-3) ...
+Selecting previously unselected package expect.
+Preparing to unpack .../11-expect_5.45.4-3_amd64.deb ...
+Unpacking expect (5.45.4-3) ...
+Selecting previously unselected package libfakeroot:amd64.
+Preparing to unpack .../12-libfakeroot_1.33-1_amd64.deb ...
+Unpacking libfakeroot:amd64 (1.33-1) ...
+Selecting previously unselected package fakeroot.
+Preparing to unpack .../13-fakeroot_1.33-1_amd64.deb ...
+Unpacking fakeroot (1.33-1) ...
+Selecting previously unselected package libcc1-0:amd64.
+Preparing to unpack .../14-libcc1-0_14-20240412-0ubuntu1_amd64.deb ...
+Unpacking libcc1-0:amd64 (14-20240412-0ubuntu1) ...
+Selecting previously unselected package libitm1:amd64.
+Preparing to unpack .../15-libitm1_14-20240412-0ubuntu1_amd64.deb ...
+Unpacking libitm1:amd64 (14-20240412-0ubuntu1) ...
+Selecting previously unselected package libasan8:amd64.
+Preparing to unpack .../16-libasan8_14-20240412-0ubuntu1_amd64.deb ...
+Unpacking libasan8:amd64 (14-20240412-0ubuntu1) ...
+Selecting previously unselected package liblsan0:amd64.
+Preparing to unpack .../17-liblsan0_14-20240412-0ubuntu1_amd64.deb ...
+Unpacking liblsan0:amd64 (14-20240412-0ubuntu1) ...
+Selecting previously unselected package libtsan2:amd64.
+Preparing to unpack .../18-libtsan2_14-20240412-0ubuntu1_amd64.deb ...
+Unpacking libtsan2:amd64 (14-20240412-0ubuntu1) ...
+Selecting previously unselected package libubsan1:amd64.
+Preparing to unpack .../19-libubsan1_14-20240412-0ubuntu1_amd64.deb ...
+Unpacking libubsan1:amd64 (14-20240412-0ubuntu1) ...
+Selecting previously unselected package libhwasan0:amd64.
+Preparing to unpack .../20-libhwasan0_14-20240412-0ubuntu1_amd64.deb ...
+Unpacking libhwasan0:amd64 (14-20240412-0ubuntu1) ...
+Selecting previously unselected package libquadmath0:amd64.
+Preparing to unpack .../21-libquadmath0_14-20240412-0ubuntu1_amd64.deb ...
+Unpacking libquadmath0:amd64 (14-20240412-0ubuntu1) ...
+Selecting previously unselected package libgcc-13-dev:amd64.
+Preparing to unpack .../22-libgcc-13-dev_13.2.0-23ubuntu4_amd64.deb ...
+Unpacking libgcc-13-dev:amd64 (13.2.0-23ubuntu4) ...
+Selecting previously unselected package gcc-13-x86-64-linux-gnu.
+Preparing to unpack .../23-gcc-13-x86-64-linux-gnu_13.2.0-23ubuntu4_amd64.deb ...
+Unpacking gcc-13-x86-64-linux-gnu (13.2.0-23ubuntu4) ...
+Selecting previously unselected package gcc-13.
+Preparing to unpack .../24-gcc-13_13.2.0-23ubuntu4_amd64.deb ...
+Unpacking gcc-13 (13.2.0-23ubuntu4) ...
+Selecting previously unselected package gcc-x86-64-linux-gnu.
+Preparing to unpack .../25-gcc-x86-64-linux-gnu_4%3a13.2.0-7ubuntu1_amd64.deb ...
+Unpacking gcc-x86-64-linux-gnu (4:13.2.0-7ubuntu1) ...
+Selecting previously unselected package gcc.
+Preparing to unpack .../26-gcc_4%3a13.2.0-7ubuntu1_amd64.deb ...
+Unpacking gcc (4:13.2.0-7ubuntu1) ...
+Selecting previously unselected package libstdc++-13-dev:amd64.
+Preparing to unpack .../27-libstdc++-13-dev_13.2.0-23ubuntu4_amd64.deb ...
+Unpacking libstdc++-13-dev:amd64 (13.2.0-23ubuntu4) ...
+Selecting previously unselected package g++-13-x86-64-linux-gnu.
+Preparing to unpack .../28-g++-13-x86-64-linux-gnu_13.2.0-23ubuntu4_amd64.deb ...
+Unpacking g++-13-x86-64-linux-gnu (13.2.0-23ubuntu4) ...
+Selecting previously unselected package g++-13.
+Preparing to unpack .../29-g++-13_13.2.0-23ubuntu4_amd64.deb ...
+Unpacking g++-13 (13.2.0-23ubuntu4) ...
+Selecting previously unselected package g++-x86-64-linux-gnu.
+Preparing to unpack .../30-g++-x86-64-linux-gnu_4%3a13.2.0-7ubuntu1_amd64.deb ...
+Unpacking g++-x86-64-linux-gnu (4:13.2.0-7ubuntu1) ...
+Selecting previously unselected package g++.
+Preparing to unpack .../31-g++_4%3a13.2.0-7ubuntu1_amd64.deb ...
+Unpacking g++ (4:13.2.0-7ubuntu1) ...
+Selecting previously unselected package libc6-i386.
+Preparing to unpack .../32-libc6-i386_2.39-0ubuntu8.2_amd64.deb ...
+Unpacking libc6-i386 (2.39-0ubuntu8.2) ...
+Selecting previously unselected package libc6-dev-i386.
+Preparing to unpack .../33-libc6-dev-i386_2.39-0ubuntu8.2_amd64.deb ...
+Unpacking libc6-dev-i386 (2.39-0ubuntu8.2) ...
+Selecting previously unselected package libc6-x32.
+Preparing to unpack .../34-libc6-x32_2.39-0ubuntu8.2_amd64.deb ...
+Unpacking libc6-x32 (2.39-0ubuntu8.2) ...
+Selecting previously unselected package libc6-dev-x32.
+Preparing to unpack .../35-libc6-dev-x32_2.39-0ubuntu8.2_amd64.deb ...
+Unpacking libc6-dev-x32 (2.39-0ubuntu8.2) ...
+Selecting previously unselected package lib32gcc-s1.
+Preparing to unpack .../36-lib32gcc-s1_14-20240412-0ubuntu1_amd64.deb ...
+Unpacking lib32gcc-s1 (14-20240412-0ubuntu1) ...
+Selecting previously unselected package libx32gcc-s1.
+Preparing to unpack .../37-libx32gcc-s1_14-20240412-0ubuntu1_amd64.deb ...
+Unpacking libx32gcc-s1 (14-20240412-0ubuntu1) ...
+Selecting previously unselected package lib32gomp1.
+Preparing to unpack .../38-lib32gomp1_14-20240412-0ubuntu1_amd64.deb ...
+Unpacking lib32gomp1 (14-20240412-0ubuntu1) ...
+Selecting previously unselected package libx32gomp1.
+Preparing to unpack .../39-libx32gomp1_14-20240412-0ubuntu1_amd64.deb ...
+Unpacking libx32gomp1 (14-20240412-0ubuntu1) ...
+Selecting previously unselected package lib32itm1.
+Preparing to unpack .../40-lib32itm1_14-20240412-0ubuntu1_amd64.deb ...
+Unpacking lib32itm1 (14-20240412-0ubuntu1) ...
+Selecting previously unselected package libx32itm1.
+Preparing to unpack .../41-libx32itm1_14-20240412-0ubuntu1_amd64.deb ...
+Unpacking libx32itm1 (14-20240412-0ubuntu1) ...
+Selecting previously unselected package lib32atomic1.
+Preparing to unpack .../42-lib32atomic1_14-20240412-0ubuntu1_amd64.deb ...
+Unpacking lib32atomic1 (14-20240412-0ubuntu1) ...
+Selecting previously unselected package libx32atomic1.
+Preparing to unpack .../43-libx32atomic1_14-20240412-0ubuntu1_amd64.deb ...
+Unpacking libx32atomic1 (14-20240412-0ubuntu1) ...
+Selecting previously unselected package lib32asan8.
+Preparing to unpack .../44-lib32asan8_14-20240412-0ubuntu1_amd64.deb ...
+Unpacking lib32asan8 (14-20240412-0ubuntu1) ...
+Selecting previously unselected package libx32asan8.
+Preparing to unpack .../45-libx32asan8_14-20240412-0ubuntu1_amd64.deb ...
+Unpacking libx32asan8 (14-20240412-0ubuntu1) ...
+Selecting previously unselected package lib32stdc++6.
+Preparing to unpack .../46-lib32stdc++6_14-20240412-0ubuntu1_amd64.deb ...
+Unpacking lib32stdc++6 (14-20240412-0ubuntu1) ...
+Selecting previously unselected package lib32ubsan1.
+Preparing to unpack .../47-lib32ubsan1_14-20240412-0ubuntu1_amd64.deb ...
+Unpacking lib32ubsan1 (14-20240412-0ubuntu1) ...
+Selecting previously unselected package libx32stdc++6.
+Preparing to unpack .../48-libx32stdc++6_14-20240412-0ubuntu1_amd64.deb ...
+Unpacking libx32stdc++6 (14-20240412-0ubuntu1) ...
+Selecting previously unselected package libx32ubsan1.
+Preparing to unpack .../49-libx32ubsan1_14-20240412-0ubuntu1_amd64.deb ...
+Unpacking libx32ubsan1 (14-20240412-0ubuntu1) ...
+Selecting previously unselected package lib32quadmath0.
+Preparing to unpack .../50-lib32quadmath0_14-20240412-0ubuntu1_amd64.deb ...
+Unpacking lib32quadmath0 (14-20240412-0ubuntu1) ...
+Selecting previously unselected package libx32quadmath0.
+Preparing to unpack .../51-libx32quadmath0_14-20240412-0ubuntu1_amd64.deb ...
+Unpacking libx32quadmath0 (14-20240412-0ubuntu1) ...
+Selecting previously unselected package lib32gcc-13-dev.
+Preparing to unpack .../52-lib32gcc-13-dev_13.2.0-23ubuntu4_amd64.deb ...
+Unpacking lib32gcc-13-dev (13.2.0-23ubuntu4) ...
+Selecting previously unselected package libx32gcc-13-dev.
+Preparing to unpack .../53-libx32gcc-13-dev_13.2.0-23ubuntu4_amd64.deb ...
+Unpacking libx32gcc-13-dev (13.2.0-23ubuntu4) ...
+Selecting previously unselected package gcc-13-multilib.
+Preparing to unpack .../54-gcc-13-multilib_13.2.0-23ubuntu4_amd64.deb ...
+Unpacking gcc-13-multilib (13.2.0-23ubuntu4) ...
+Selecting previously unselected package lib32stdc++-13-dev.
+Preparing to unpack .../55-lib32stdc++-13-dev_13.2.0-23ubuntu4_amd64.deb ...
+Unpacking lib32stdc++-13-dev (13.2.0-23ubuntu4) ...
+Selecting previously unselected package libx32stdc++-13-dev.
+Preparing to unpack .../56-libx32stdc++-13-dev_13.2.0-23ubuntu4_amd64.deb ...
+Unpacking libx32stdc++-13-dev (13.2.0-23ubuntu4) ...
+Selecting previously unselected package g++-13-multilib.
+Preparing to unpack .../57-g++-13-multilib_13.2.0-23ubuntu4_amd64.deb ...
+Unpacking g++-13-multilib (13.2.0-23ubuntu4) ...
+Selecting previously unselected package gcc-multilib.
+Preparing to unpack .../58-gcc-multilib_4%3a13.2.0-7ubuntu1_amd64.deb ...
+Unpacking gcc-multilib (4:13.2.0-7ubuntu1) ...
+Selecting previously unselected package g++-multilib.
+Preparing to unpack .../59-g++-multilib_4%3a13.2.0-7ubuntu1_amd64.deb ...
+Unpacking g++-multilib (4:13.2.0-7ubuntu1) ...
+Selecting previously unselected package liberror-perl.
+Preparing to unpack .../60-liberror-perl_0.17029-2_all.deb ...
+Unpacking liberror-perl (0.17029-2) ...
+Selecting previously unselected package git-man.
+Preparing to unpack .../61-git-man_1%3a2.43.0-1ubuntu7.1_all.deb ...
+Unpacking git-man (1:2.43.0-1ubuntu7.1) ...
+Selecting previously unselected package git.
+Preparing to unpack .../62-git_1%3a2.43.0-1ubuntu7.1_amd64.deb ...
+Unpacking git (1:2.43.0-1ubuntu7.1) ...
+Selecting previously unselected package gperf.
+Preparing to unpack .../63-gperf_3.1-1build1_amd64.deb ...
+Unpacking gperf (3.1-1build1) ...
+Selecting previously unselected package libfl2:amd64.
+Preparing to unpack .../64-libfl2_2.6.4-8.2build1_amd64.deb ...
+Unpacking libfl2:amd64 (2.6.4-8.2build1) ...
+Selecting previously unselected package libfl-dev:amd64.
+Preparing to unpack .../65-libfl-dev_2.6.4-8.2build1_amd64.deb ...
+Unpacking libfl-dev:amd64 (2.6.4-8.2build1) ...
+Selecting previously unselected package libncurses-dev:amd64.
+Preparing to unpack .../66-libncurses-dev_6.4+20240113-1ubuntu2_amd64.deb ...
+Unpacking libncurses-dev:amd64 (6.4+20240113-1ubuntu2) ...
+Selecting previously unselected package libssl-dev:amd64.
+Preparing to unpack .../67-libssl-dev_3.0.13-0ubuntu3.1_amd64.deb ...
+Unpacking libssl-dev:amd64 (3.0.13-0ubuntu3.1) ...
+Selecting previously unselected package libtext-unidecode-perl.
+Preparing to unpack .../68-libtext-unidecode-perl_1.30-3_all.deb ...
+Unpacking libtext-unidecode-perl (1.30-3) ...
+Selecting previously unselected package libxml-namespacesupport-perl.
+Preparing to unpack .../69-libxml-namespacesupport-perl_1.12-2_all.deb ...
+Unpacking libxml-namespacesupport-perl (1.12-2) ...
+Selecting previously unselected package libxml-sax-base-perl.
+Preparing to unpack .../70-libxml-sax-base-perl_1.09-3_all.deb ...
+Unpacking libxml-sax-base-perl (1.09-3) ...
+Selecting previously unselected package libxml-sax-perl.
+Preparing to unpack .../71-libxml-sax-perl_1.02+dfsg-3_all.deb ...
+Unpacking libxml-sax-perl (1.02+dfsg-3) ...
+Selecting previously unselected package libxml-libxml-perl.
+Preparing to unpack .../72-libxml-libxml-perl_2.0207+dfsg+really+2.0134-1build4_amd64.deb ...
+Unpacking libxml-libxml-perl (2.0207+dfsg+really+2.0134-1build4) ...
+Selecting previously unselected package libxml-sax-expat-perl.
+Preparing to unpack .../73-libxml-sax-expat-perl_0.51-2_all.deb ...
+Unpacking libxml-sax-expat-perl (0.51-2) ...
+Selecting previously unselected package make.
+Preparing to unpack .../74-make_4.3-4.1build2_amd64.deb ...
+Unpacking make (4.3-4.1build2) ...
+Selecting previously unselected package module-assistant.
+Preparing to unpack .../75-module-assistant_0.11.11ubuntu1_all.deb ...
+Unpacking module-assistant (0.11.11ubuntu1) ...
+Selecting previously unselected package python-is-python3.
+Preparing to unpack .../76-python-is-python3_3.11.4-1_all.deb ...
+Unpacking python-is-python3 (3.11.4-1) ...
+Selecting previously unselected package ssh.
+Preparing to unpack .../77-ssh_1%3a9.6p1-3ubuntu13.4_all.deb ...
+Unpacking ssh (1:9.6p1-3ubuntu13.4) ...
+Selecting previously unselected package tex-common.
+Preparing to unpack .../78-tex-common_6.18_all.deb ...
+Unpacking tex-common (6.18) ...
+Selecting previously unselected package texinfo-lib.
+Preparing to unpack .../79-texinfo-lib_7.1-3build2_amd64.deb ...
+Unpacking texinfo-lib (7.1-3build2) ...
+Selecting previously unselected package texinfo.
+Preparing to unpack .../80-texinfo_7.1-3build2_all.deb ...
+Unpacking texinfo (7.1-3build2) ...
+Selecting previously unselected package vim-runtime.
+Preparing to unpack .../81-vim-runtime_2%3a9.1.0016-1ubuntu7.1_all.deb ...
+Adding 'diversion of /usr/share/vim/vim91/doc/help.txt to /usr/share/vim/vim91/doc/help.txt.vim-tiny by vim-runtime'
+Adding 'diversion of /usr/share/vim/vim91/doc/tags to /usr/share/vim/vim91/doc/tags.vim-tiny by vim-runtime'
+Unpacking vim-runtime (2:9.1.0016-1ubuntu7.1) ...
+Selecting previously unselected package vim.
+Preparing to unpack .../82-vim_2%3a9.1.0016-1ubuntu7.1_amd64.deb ...
+Unpacking vim (2:9.1.0016-1ubuntu7.1) ...
+Selecting previously unselected package libfdt1:amd64.
+Preparing to unpack .../83-libfdt1_1.7.0-2build1_amd64.deb ...
+Unpacking libfdt1:amd64 (1.7.0-2build1) ...
+Selecting previously unselected package device-tree-compiler.
+Preparing to unpack .../84-device-tree-compiler_1.7.0-2build1_amd64.deb ...
+Unpacking device-tree-compiler (1.7.0-2build1) ...
+Setting up libncurses-dev:amd64 (6.4+20240113-1ubuntu2) ...
+Setting up ssh (1:9.6p1-3ubuntu13.4) ...
+Setting up gawk (1:5.2.1-2build3) ...
+Setting up tcl-expect:amd64 (5.45.4-3) ...
+Setting up libxml-namespacesupport-perl (1.12-2) ...
+Setting up m4 (1.4.19-4build1) ...
+Setting up texinfo-lib (7.1-3build2) ...
+Setting up libfdt1:amd64 (1.7.0-2build1) ...
+Setting up bzip2 (1.0.8-5.1) ...
+Setting up gperf (3.1-1build1) ...
+Setting up libfakeroot:amd64 (1.33-1) ...
+Setting up libc6-x32 (2.39-0ubuntu8.2) ...
+Setting up fakeroot (1.33-1) ...
+update-alternatives: using /usr/bin/fakeroot-sysv to provide /usr/bin/fakeroot (fakeroot) in auto mode
+Setting up liberror-perl (0.17029-2) ...
+Setting up tex-common (6.18) ...
+update-language: texlive-base not installed and configured, doing nothing!
+Setting up libxml-sax-base-perl (1.09-3) ...
+Setting up autotools-dev (20220109.1) ...
+Setting up make (4.3-4.1build2) ...
+Setting up libquadmath0:amd64 (14-20240412-0ubuntu1) ...
+Setting up libssl-dev:amd64 (3.0.13-0ubuntu3.1) ...
+Setting up libjsoncpp25:amd64 (1.9.5-6build1) ...
+Setting up device-tree-compiler (1.7.0-2build1) ...
+Setting up libfl2:amd64 (2.6.4-8.2build1) ...
+Setting up libx32gomp1 (14-20240412-0ubuntu1) ...
+Setting up autoconf (2.71-3) ...
+Setting up module-assistant (0.11.11ubuntu1) ...
+Setting up libubsan1:amd64 (14-20240412-0ubuntu1) ...
+Setting up libhwasan0:amd64 (14-20240412-0ubuntu1) ...
+Setting up librhash0:amd64 (1.4.3-3build1) ...
+Setting up libasan8:amd64 (14-20240412-0ubuntu1) ...
+Setting up bison (2:3.8.2+dfsg-1build2) ...
+update-alternatives: using /usr/bin/bison.yacc to provide /usr/bin/yacc (yacc) in auto mode
+Setting up libc6-i386 (2.39-0ubuntu8.2) ...
+Setting up git-man (1:2.43.0-1ubuntu7.1) ...
+Setting up libx32quadmath0 (14-20240412-0ubuntu1) ...
+Setting up cmake-data (3.28.3-1build7) ...
+Setting up libtsan2:amd64 (14-20240412-0ubuntu1) ...
+Setting up vim-runtime (2:9.1.0016-1ubuntu7.1) ...
+Setting up libtext-unidecode-perl (1.30-3) ...
+Setting up python-is-python3 (3.11.4-1) ...
+Setting up lib32atomic1 (14-20240412-0ubuntu1) ...
+Setting up libcc1-0:amd64 (14-20240412-0ubuntu1) ...
+Setting up liblsan0:amd64 (14-20240412-0ubuntu1) ...
+Setting up libitm1:amd64 (14-20240412-0ubuntu1) ...
+Setting up libx32atomic1 (14-20240412-0ubuntu1) ...
+Setting up automake (1:1.16.5-1.3ubuntu1) ...
+update-alternatives: using /usr/bin/automake-1.16 to provide /usr/bin/automake (automake) in auto mode
+Setting up flex (2.6.4-8.2build1) ...
+Setting up libc6-dev-i386 (2.39-0ubuntu8.2) ...
+Setting up vim (2:9.1.0016-1ubuntu7.1) ...
+update-alternatives: using /usr/bin/vim.basic to provide /usr/bin/ex (ex) in auto mode
+update-alternatives: using /usr/bin/vim.basic to provide /usr/bin/rview (rview) in auto mode
+update-alternatives: using /usr/bin/vim.basic to provide /usr/bin/rvim (rvim) in auto mode
+update-alternatives: using /usr/bin/vim.basic to provide /usr/bin/vi (vi) in auto mode
+update-alternatives: using /usr/bin/vim.basic to provide /usr/bin/view (view) in auto mode
+update-alternatives: using /usr/bin/vim.basic to provide /usr/bin/vim (vim) in auto mode
+update-alternatives: using /usr/bin/vim.basic to provide /usr/bin/vimdiff (vimdiff) in auto mode
+Setting up lib32itm1 (14-20240412-0ubuntu1) ...
+Setting up libx32gcc-s1 (14-20240412-0ubuntu1) ...
+Setting up expect (5.45.4-3) ...
+Setting up libx32itm1 (14-20240412-0ubuntu1) ...
+Setting up libxml-sax-perl (1.02+dfsg-3) ...
+update-perl-sax-parsers: Registering Perl SAX parser XML::SAX::PurePerl with priority 10...
+update-perl-sax-parsers: Updating overall Perl SAX parser modules info file...
+
+Creating config file /etc/perl/XML/SAX/ParserDetails.ini with new version
+Setting up libfl-dev:amd64 (2.6.4-8.2build1) ...
+Setting up libx32asan8 (14-20240412-0ubuntu1) ...
+Setting up libc6-dev-x32 (2.39-0ubuntu8.2) ...
+Setting up lib32gomp1 (14-20240412-0ubuntu1) ...
+Setting up lib32gcc-s1 (14-20240412-0ubuntu1) ...
+Setting up lib32stdc++6 (14-20240412-0ubuntu1) ...
+Setting up lib32asan8 (14-20240412-0ubuntu1) ...
+Setting up git (1:2.43.0-1ubuntu7.1) ...
+Setting up libxml-libxml-perl (2.0207+dfsg+really+2.0134-1build4) ...
+update-perl-sax-parsers: Registering Perl SAX parser XML::LibXML::SAX::Parser with priority 50...
+update-perl-sax-parsers: Registering Perl SAX parser XML::LibXML::SAX with priority 50...
+update-perl-sax-parsers: Updating overall Perl SAX parser modules info file...
+Replacing config file /etc/perl/XML/SAX/ParserDetails.ini with new version
+Setting up libxml-sax-expat-perl (0.51-2) ...
+update-perl-sax-parsers: Registering Perl SAX parser XML::SAX::Expat with priority 50...
+update-perl-sax-parsers: Updating overall Perl SAX parser modules info file...
+Replacing config file /etc/perl/XML/SAX/ParserDetails.ini with new version
+Setting up libgcc-13-dev:amd64 (13.2.0-23ubuntu4) ...
+Setting up lib32quadmath0 (14-20240412-0ubuntu1) ...
+Setting up cmake (3.28.3-1build7) ...
+Setting up libstdc++-13-dev:amd64 (13.2.0-23ubuntu4) ...
+Setting up libx32stdc++6 (14-20240412-0ubuntu1) ...
+Setting up libx32ubsan1 (14-20240412-0ubuntu1) ...
+Setting up gcc-13-x86-64-linux-gnu (13.2.0-23ubuntu4) ...
+Setting up lib32ubsan1 (14-20240412-0ubuntu1) ...
+Setting up lib32gcc-13-dev (13.2.0-23ubuntu4) ...
+Setting up libx32gcc-13-dev (13.2.0-23ubuntu4) ...
+Setting up gcc-13 (13.2.0-23ubuntu4) ...
+Setting up texinfo (7.1-3build2) ...
+Setting up gcc-13-multilib (13.2.0-23ubuntu4) ...
+Setting up lib32stdc++-13-dev (13.2.0-23ubuntu4) ...
+Setting up g++-13-x86-64-linux-gnu (13.2.0-23ubuntu4) ...
+Setting up gcc-x86-64-linux-gnu (4:13.2.0-7ubuntu1) ...
+Setting up libx32stdc++-13-dev (13.2.0-23ubuntu4) ...
+Setting up gcc (4:13.2.0-7ubuntu1) ...
+Setting up g++-x86-64-linux-gnu (4:13.2.0-7ubuntu1) ...
+Setting up gcc-multilib (4:13.2.0-7ubuntu1) ...
+Setting up g++-13 (13.2.0-23ubuntu4) ...
+Setting up g++-13-multilib (13.2.0-23ubuntu4) ...
+Setting up g++ (4:13.2.0-7ubuntu1) ...
+update-alternatives: using /usr/bin/g++ to provide /usr/bin/c++ (c++) in auto mode
+Setting up g++-multilib (4:13.2.0-7ubuntu1) ...
+Processing triggers for install-info (7.1-3build2) ...
+Processing triggers for libc-bin (2.39-0ubuntu8.2) ...
+Processing triggers for man-db (2.12.0-4build2) ...
